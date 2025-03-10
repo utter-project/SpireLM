@@ -48,6 +48,7 @@ if __name__ == "__main__":
     parser.add_argument('--original', help="Path to original sentencepiece model; but do we want the HF tokenizer instead?")
     parser.add_argument("--n_new_dsus", type=int, help="Number of new DSUs to create (mutually exclusive with --new_types)")
     parser.add_argument('--new_types', help="Path to new types to create (mutually exclusive with --n_new_dsus)")
+    parser.add_argument("--dsu_format", choices=["pua", "extra_id"], default="pua", help="If using --n_new_dsus, format they should take (default: 'pua' for private use area characters)")
     parser.add_argument('--new_specials', help="Comma-delimited list of new special types to add")
     parser.add_argument("--spm_prefix", required=True, help="Extended sentencepiece model will be saved to spm_prefix.{model, vocab}.")
     parser.add_argument("--hf_base", required=True, help="Path to save HF tokenizer for SpireBase")

@@ -1,0 +1,17 @@
+import "uservars.tconf"
+
+global {
+
+    ducttape_experimental_imports=true
+    ducttape_experimental_submitters=true
+    ducttape_experimental_multiproc=true
+
+    n_dsus=5000
+
+    fleurs_dsus="/mnt/scratch-artemis/bpop/tower-speech-outputs/asr-outputs/DeduplicateDSUs/ASRDataset.fleurs/labels.km.dedup"
+
+    tower_base_tokenizer="Unbabel/TowerBase-7B-v0.1"
+    tower_base_spm="/mnt/scratch-artemis/bpop/cache/hub/models--Unbabel--TowerBase-7B-v0.1/snapshots/bd59c10d76007e960368acfc15bebc201c112b1b/tokenizer.model"
+
+    spire_full="/mnt/data-artemis/bpop/tsi-v5-2812"
+}

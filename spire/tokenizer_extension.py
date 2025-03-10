@@ -53,8 +53,7 @@ def _save(proto, model_prefix):
 
 
 def extend_spm(original_model, save_prefix, new_specials, new_types, scoring_type="bpe", new_types_are_special=False):
-    original_hf = LlamaTokenizer.from_pretrained(original_model)
-    model, proto = _load_model(original_hf.vocab_file)
+    model, proto = _load_model(original_model)
     proto = _extend(proto, new_specials, scoring_type, special=True)
     proto = _extend(proto, new_types, scoring_type, special=new_types_are_special)
     _save(proto, save_prefix)
