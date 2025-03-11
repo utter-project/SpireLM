@@ -29,7 +29,7 @@ task FormatFleursPUA
 }
 
 task BuildFleursInstructions
-    < tokenizer_instruct=@ConvertTokenizer
+    < tokenizer_instruct=@ExtendTokenizer
     < test_dsus=$dsus@FormatFleursPUA
     > instructions=instructions.json
     :: inference_repo=@
@@ -45,7 +45,7 @@ task BuildFleursInstructions
 
 task Decode
     < instructions=@BuildFleursInstructions
-    < tokenizer_instruct=@ConvertTokenizer
+    < tokenizer_instruct=@ExtendTokenizer
     > hyps=hyps.txt
     :: spire_full=@
     :: inference_repo=@
@@ -62,7 +62,7 @@ task Decode
 
 task DecodeSlow
     < instructions=@BuildFleursInstructions
-    < tokenizer_instruct=@ConvertTokenizer
+    < tokenizer_instruct=@ExtendTokenizer
     > hyps=hyps.txt
     :: spire_full=@
     :: inference_repo=@
@@ -79,7 +79,7 @@ task DecodeSlow
 }
 
 plan PuaTokenizers {
-    reach ConvertTokenizer
+    reach ExtendTokenizer
 }
 
 plan BuildInstructions {

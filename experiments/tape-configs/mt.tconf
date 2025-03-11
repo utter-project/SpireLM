@@ -1,0 +1,24 @@
+import "uservars_mt.tconf"
+import "models.tconf"
+import "languages.tconf"
+
+global {
+
+    ducttape_experimental_imports=true
+    ducttape_experimental_submitters=true
+    ducttape_experimental_multiproc=true
+
+    flores_path="openlanguagedata/flores_plus"
+
+    tower_eval_url="https://huggingface.co/datasets/Unbabel/TowerEval-Data-v0.1/resolve/main/data.tar.gz"
+
+    seed=42
+
+    n_shots=(NShots: zero=0 five=5)
+    template=(NShots: zero=mt_zero five=mt_icl)
+
+    comet_model="Unbabel/wmt22-comet-da"
+
+    # it's probably fine to use the same value across all models
+    max_tokens=(MaxTokens: 256 128 512)
+}

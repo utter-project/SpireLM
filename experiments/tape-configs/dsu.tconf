@@ -1,0 +1,8 @@
+global {
+    hubert_model="/mnt/scratch-artemis/kshitij/clustering/feature_extraction/model/hubert_large_ll60k.pt"
+    hubert_layer=22
+
+    km_model="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000"
+
+    dsu_format=(DSUFormat: extra_id pua)
+}
