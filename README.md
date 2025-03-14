@@ -19,7 +19,7 @@ The core of our approach to speech is *discretization* - continuous speech signa
 2. Our k-means model ([download](https://huggingface.co/utter-project/SpireKMeans/resolve/main/kmeans_model)) maps each frame to one of 5000 clusters.
 3. The sequences of cluster IDs are deduplicated, such that consecutive frames with the same label are collapsed into a single token. This usually shortens the sequence length by about 30%.
 
-The `spire` implements this entire pipeline. Assuming you have downloaded both of these files, you can use it like so:
+The `spire` package implements this pipeline. Assuming you have downloaded both of these files, you can use it like so:
 
 ```
 from datasets import load_dataset
@@ -27,7 +27,7 @@ from spire.dsus import Labeler
 from spire.utils import fix_fleurs_path
 
 fleurs = load_dataset("google/fleurs", "en_us")
-wav = fix_fleurs_path(fleurs["validation"][29]["path"])
+wav = fix_fleurs_path(fleurs["validation"][29])
 
 labeler = Labeler("hubert_large_ll60k.pt", "kmeans_model")
 speech_tokens = labeler.label(wav)
