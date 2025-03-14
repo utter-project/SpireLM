@@ -13,12 +13,32 @@ We release our checkpoints through Hugging Face. All of our models can be loaded
 | TowerFull | [utter-project/TowerFull](https://huggingface.co/utter-project/TowerFull) |
 
 ## Tokenizing Speech
-The core of our approach to speech is *discretization* - continuous speech signals are converted into sequences of tokens, which can then be processed alongside text.
+The core of our approach to speech is *discretization* - continuous speech signals are converted into sequences of tokens, which can then be processed alongside text. Our discretization system consists of a few steps:
 
-TODO: link to kmeans model, code snippet
+1. HuBERT Large ([fairseq download](https://dl.fbaipublicfiles.com/hubert/hubert_large_ll60k.pt)) converts 16kHz .wav files into into a sequence of feature vectors, one for each 20ms frame. We use the representations from layer 22.
+2. Our k-means model ([download](https://huggingface.co/utter-project/SpireKMeans/resolve/main/kmeans_model)) maps each frame to one of 5000 clusters.
+3. The sequences of cluster IDs are deduplicated, such that consecutive frames with the same label are collapsed into a single token. This usually shortens the sequence length by about 30%.
 
-## Reproducing our Results
+The `spire` implements this entire pipeline. Assuming you have downloaded both of these files, you can use it like so:
+
+```
+from datasets import load_dataset
+from spire.dsus import Labeler
+from spire.utils import fix_fleurs_path
+
+fleurs = load_dataset("google/fleurs", "en_us")
+wav = fix_fleurs_path(fleurs["validation"][29]["path"])
+
+labeler = Labeler("hubert_large_ll60k.pt", "kmeans_model")
+speech_tokens = labeler.label(wav)
+```
+
+TODO: add ASR/ST examples with this sequence
+
+## Reproducing our Inference Results
 TODO: ducttape example
+
+## Reproducing our Training
 
 ## Citation
 If you use Spire, please cite our work:
