@@ -27,11 +27,14 @@ from spire.dsus import Labeler
 from spire.utils import fix_fleurs_path
 
 fleurs = load_dataset("google/fleurs", "en_us")
-wav = fix_fleurs_path(fleurs["validation"][29])
+wav = fix_fleurs_path(fleurs["validation"][29], "validation")
 
 labeler = Labeler("hubert_large_ll60k.pt", "kmeans_model")
 speech_tokens = labeler.label(wav)
+print(speech_tokens)
 ```
+
+The output will not be very readable, as it consists of a sequence of Unicode [private use area](https://en.wikipedia.org/wiki/Private_Use_Areas) characters. However, these characters are known to the Spire tokenizer and can be combined with text:
 
 TODO: add ASR/ST examples with this sequence
 
