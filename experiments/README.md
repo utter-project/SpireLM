@@ -35,3 +35,34 @@ ducttape asr.tape -C tape-configs/asr.tconf -p ComputeSeamlessWER
 ducttape asr.tape -C tape-configs/asr.tconf -p DecodeWh
 ducttape asr.tape -C tape-configs/asr.tconf -p ComputeWhisperWER
 ```
+
+## MT Results
+
+### Translate FLORES for all models and language pairs
+```
+ducttape flores.tape -C tape-configs/mt.tconf  -p TranslateFiveShot
+ducttape flores.tape -C tape-configs/mt.tconf  -p TranslateZeroShot
+ducttape flores.tape -C tape-configs/mt.tconf  -p TranslateFloresSeamless
+```
+
+### Compute FLORES spBLEU and COMET-22 for all models and language pairs
+
+```
+ducttape flores.tape -C tape-configs/mt.tconf  -p EvaluateFiveShot
+ducttape flores.tape -C tape-configs/mt.tconf  -p EvaluateZeroShot
+ducttape flores.tape -C tape-configs/mt.tconf  -p EvaluateFloresSeamless
+```
+
+### Translate WMT for all models and language pairs
+```
+ducttape wmt.tape -C tape-configs/mt.tconf  -p TranslateFiveShot
+ducttape wmt.tape -C tape-configs/mt.tconf  -p TranslateZeroShot
+ducttape wmt.tape -C tape-configs/mt.tconf  -p TranslateWMTSeamless
+```
+
+### Compute WMT spBLEU and COMET-22 for all models and language pairs
+
+```
+ducttape wmt.tape -C tape-configs/mt.tconf  -p EvaluateFiveShot
+ducttape wmt.tape -C tape-configs/mt.tconf  -p EvaluateZeroShot
+ducttape wmt.tape -C tape-configs/mt.tconf  -p EvaluateWMTSeamless
