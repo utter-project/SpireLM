@@ -9,6 +9,7 @@ from typing import BinaryIO, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 SF_AUDIO_FILE_EXTENSIONS = {".wav", ".flac", ".ogg"}
 FEATURE_OR_SF_AUDIO_FILE_EXTENSIONS = {".npy", ".wav", ".flac", ".ogg"}
@@ -135,6 +136,32 @@ def get_features_or_waveform(path: str, use_sample_rate=None):
     return get_waveform(
         _path, always_2d=False, output_sample_rate=use_sample_rate
     )[0]
+
+
+def read_legacy_audio(path, sample_rate, normalize):
+    wav = get_features_or_waveform(path, use_sample_rate=sample_rate)
+
+    if wav.ndim == 2:
+        wav = wav.mean(-1)
+
+    assert wav.ndim == 1, wav.ndim
+    '''
+    if ref_len is not None and abs(ref_len - len(wav)) > 160:
+        logging.warning(f"ref {ref_len} != read {len(wav)} ({path})")
+    '''
+
+    orig_shape = wav.shape
+
+    # now what to do about cuda?
+    wav = torch.from_numpy(wav).float().cuda()
+
+    if normalize:
+        wav = F.layer_norm(wav, wav.shape)
+    wav = wav.view(1, -1)
+
+    assert orig_shape[0] == wav.shape[1], (orig_shape, wav.shape)
+
+    return wav
 
 
 def parse_path(path: str) -> Tuple[str, List[int]]:

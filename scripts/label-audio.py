@@ -27,13 +27,15 @@ def get_path_iterator(tsv, nshard, rank):
 
 
 def main(args):
-    labeler = Labeler(args.ckpt_path, args.km_path, feature_layer=args.layer, kmeans_device="cuda:0")
+    labeler = Labeler(args.ckpt_path, args.km_path, feature_layer=args.layer, kmeans_device="cuda:0", legacy_audio=args.legacy_audio)
     generator, num = get_path_iterator(args.tsv_path, args.nshard, args.rank)
 
     iterator = generator()
     with open(args.out_path, "w") as f:
         for path, nsample in tqdm(iterator, total=num):
-            labels = labeler.label(path)
+            labels = labeler.label(path, indices_only=args.as_indices)
+            if isinstance(labels, list):
+                labels = " ".join([str(label) for label in labels])
             f.write(labels + "\n")
 
 
@@ -47,6 +49,8 @@ if __name__ == "__main__":
     parser.add_argument("--nshard", type=int, default=1)  # 1
     parser.add_argument("--rank", type=int, default=0)  # 0
     parser.add_argument("--max_chunk", type=int, default=1600000)
+    parser.add_argument("--as-indices", action="store_true")
+    parser.add_argument("--legacy-audio", action="store_true")
     args = parser.parse_args()
 
     main(args)

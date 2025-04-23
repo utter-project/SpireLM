@@ -24,18 +24,20 @@ def main(args):
 
     dataset = load_dataset(args.path, args.path_extra, split=args.split, trust_remote_code=True)
 
-    print("/")  # parent dir line of tsv
-    for example_dict in dataset:
-        # get the number of samples
-        n_samples = example_dict["audio"]["array"].shape[0]
-        path = path_func(example_dict)
-        print("\t".join([path, str(n_samples)]))
+    with open(args.out, "w") as f:
+        f.write("/\n")  # parent dir line of tsv
+        for example_dict in dataset:
+            # get the number of samples
+            n_samples = example_dict["audio"]["array"].shape[0]
+            path = path_func(example_dict)
+            f.write("\t".join([path, str(n_samples)]) + "\n")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", choices=["google/fleurs", "openslr/librispeech_asr", "facebook/voxpopuli"])
     parser.add_argument("--path-extra", help="generally a language or clean/other")
+    parser.add_argument("--out")
     parser.add_argument("--split", default="test")
     args = parser.parse_args()
     main(args)

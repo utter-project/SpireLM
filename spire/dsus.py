@@ -43,9 +43,9 @@ class Labeler:
 
     def __init__(
         self, ckpt_path, km_path, feature_layer=22, max_chunk=1600000,
-        deduplicated=True, dsu_format="pua", kmeans_device="cuda:0", kmeans_backend="torch"
+        deduplicated=True, dsu_format="pua", kmeans_device="cuda:0", kmeans_backend="torch", legacy_audio=False
     ):
-        self.hubert = FairseqHubertFeatureReader(ckpt_path, feature_layer, max_chunk)
+        self.hubert = FairseqHubertFeatureReader(ckpt_path, feature_layer, max_chunk, legacy_audio=legacy_audio)
         self.kmeans = KmeansForInference(km_path, device=kmeans_device, backend=kmeans_backend)
         self.deduplicated = deduplicated
         self.dsu_format = dsu_format

@@ -6,7 +6,7 @@ task BuildNativeTSV
     > tsv=audio.tsv
 {
     # build a tsv file for an ASR dataset
-    python $repo/scripts/build_tsv.py --path $asr_dataset --path-extra $asr_path_extra --split $asr_split > $tsv
+    python $repo/scripts/build_tsv.py --path $asr_dataset --path-extra $asr_path_extra --split $asr_split --out $tsv
 }
 
 task ConvertTSV
@@ -38,6 +38,25 @@ task LabelAudio
         --ckpt_path $hubert_model \
         --layer $hubert_layer \
         --km_path $km_model
+}
+
+task LabelAudioLegacy
+    < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
+    > dsus=dsu.txt
+    :: hubert_model=@
+    :: hubert_layer=@
+    :: km_model=@
+    :: repo=@
+{
+    # This task is for generating labels based on fairseq-based audio normalization,
+    # which produces slightly different results than HF's Wav2Vec2FeatureExtractor
+    python $repo/scripts/label-audio.py \
+        --tsv_path $wav_tsv \
+        --out_path $dsus \
+        --ckpt_path $hubert_model \
+        --layer $hubert_layer \
+        --km_path $km_model \
+        --legacy-audio
 }
 
 task BuildInstructions
@@ -166,7 +185,15 @@ plan Labelize {
     reach LabelAudio via (ASRDataset: *)
 }
 
+plan LabelizeLegacy {
+    reach LabelAudioLegacy via (ASRDataset: *)
+}
+
 ##### Hypothesis Generation #####
+
+plan DecodeSpireFull {
+    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full)
+}
 
 plan DecodeTowerSpire {
     reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_base spire_full spire_no_pseudo spire_no_blocks tower_full)
@@ -181,6 +208,10 @@ plan DecodeWh {
 }
 
 ##### Evaluation #####
+
+plan ComputeWERSpireFull {
+    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full)
+}
 
 plan ComputeWERTowerSpire {
     reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_base spire_full spire_no_pseudo spire_no_blocks tower_full)
