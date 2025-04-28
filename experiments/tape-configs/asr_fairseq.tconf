@@ -1,0 +1,88 @@
+import "uservars_asr.tconf"
+import "models.tconf"
+import "dsu_fairseq.tconf"
+
+global {
+
+    ducttape_experimental_imports=true
+    ducttape_experimental_submitters=true
+    ducttape_experimental_multiproc=true
+    seed=42
+
+    n_shots=(NShots: zero=0 five=5 one=1 three=3 ten=10)
+    max_shot_src_len=(ShotSrcLen: 99999)
+    max_shot_tgt_len=(ShotTgtLen: 99999 100)
+
+    template=asr_simple
+
+    asr_dataset=(
+        ASRDataset:
+            ls_clean="openslr/librispeech_asr"
+            ls_other="openslr/librispeech_asr"
+            fleurs="google/fleurs"
+            voxpopuli="facebook/voxpopuli"
+    )
+    asr_path_extra=(
+        ASRDataset:
+            ls_clean="clean"
+            ls_other="other"
+            fleurs="en_us"
+            voxpopuli="en"
+    )
+    asr_split="test"
+
+    asr_file_type=(
+        ASRDataset:
+            ls_clean="flac"
+            ls_other="flac"
+            fleurs="wav"
+            voxpopuli="wav"
+    )
+
+    asr_text_field=(
+        ASRDataset:
+            ls_clean="text"
+            ls_other="text"
+            fleurs="raw_transcription"
+            voxpopuli="normalized_text"
+    )
+
+    asr_dev_dataset=(
+        ASRDevDataset:
+            ls_clean="openslr/librispeech_asr"
+            ls_other="openslr/librispeech_asr"
+            fleurs="google/fleurs"
+            voxpopuli="facebook/voxpopuli"
+    )
+    asr_dev_path_extra=(
+        ASRDevDataset:
+            ls_clean="clean"
+            ls_other="other"
+            fleurs="en_us"
+            voxpopuli="en"
+    )
+    asr_dev_split="validation"
+
+    asr_dev_file_type=(
+        ASRDevDataset:
+            ls_clean="flac"
+            ls_other="flac"
+            fleurs="wav"
+            voxpopuli="wav"
+    )
+
+    asr_dev_text_field=(
+        ASRDevDataset:
+            ls_clean="text"
+            ls_other="text"
+            fleurs="raw_transcription"
+            voxpopuli="normalized_text"
+    )
+
+    # it's probably fine to use the same value across all models
+    max_tokens=(MaxTokens: 256 128 512)
+
+    backend=(Backend: vllm hf)
+
+    normalizer=(Normalizer: english basic)
+}

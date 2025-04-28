@@ -59,6 +59,22 @@ task LabelAudioLegacy
         --legacy-audio
 }
 
+task LabelAudioNew
+    < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
+    > dsus=dsu.txt
+    :: hubert_model=@
+    :: hubert_layer=@
+    :: km_model=@
+    :: repo=@
+{
+    python $repo/scripts/label-audio.py \
+        --tsv_path $wav_tsv \
+        --out_path $dsus \
+        --ckpt_path facebook/hubert-large-ll60k \
+        --layer $hubert_layer \
+        --km_path $km_model
+}
+
 task BuildInstructions
     < test_dsus=$dsus@LabelAudio
     > instructions=instructions.json
@@ -187,6 +203,10 @@ plan Labelize {
 
 plan LabelizeLegacy {
     reach LabelAudioLegacy via (ASRDataset: *)
+}
+
+plan LabelizeNew {
+    reach LabelAudioNew via (ASRDataset: *)
 }
 
 ##### Hypothesis Generation #####
