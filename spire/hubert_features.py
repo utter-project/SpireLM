@@ -28,7 +28,7 @@ class HFHubertFeatureReader:
     def get_feats(self, path, ref_len=None):
         with torch.no_grad():
             # But first, read in the file
-            wav, sample_rate = sf.read(path)  # second value is sample rate
+            wav, sample_rate = sf.read(path, dtype="float32")  # second value is sample rate
             assert sample_rate == self.sample_rate, "Expected sample rate {}, got {}".format(self.sample_rate, sample_rate)
 
             # do we need to do any preprocessing here? I don't think so because
