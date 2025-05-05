@@ -32,15 +32,23 @@ def main(args):
         kmeans_device="cuda:0", legacy_audio=args.legacy_audio,
         deduplicated=not args.no_dedup
     )
-    generator, num = get_path_iterator(args.tsv_path, args.nshard, args.rank)
+    # generator, num = get_path_iterator(args.tsv_path, args.nshard, args.rank)
 
-    iterator = generator()
+    # iterator = generator()
     with open(args.out_path, "w") as f:
+        predictions = labeler.label_corpus(args.tsv_path, indices_only=args.as_indices, batch_size=args.batch_size, num_workers=args.num_workers)
+
+        '''
         for path, nsample in tqdm(iterator, total=num):
             labels = labeler.label(path, indices_only=args.as_indices)
             if isinstance(labels, list):
                 labels = " ".join([str(label) for label in labels])
             f.write(labels + "\n")
+        '''
+        for pred in predictions:
+            if isinstance(pred, list):
+                pred = " ".join([str(label) for label in pred])
+            f.write(pred + "\n")
 
 
 if __name__ == "__main__":
@@ -56,6 +64,8 @@ if __name__ == "__main__":
     parser.add_argument("--as-indices", action="store_true")
     parser.add_argument("--legacy-audio", action="store_true")
     parser.add_argument("--no-dedup", action="store_true")
+    parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--num-workers", type=int, default=1)
     args = parser.parse_args()
 
     main(args)
