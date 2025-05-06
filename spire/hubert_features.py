@@ -14,14 +14,11 @@ from transformers import HubertModel, Wav2Vec2FeatureExtractor
 class HFHubertFeatureReader:
 
     def __init__(self, ckpt_path, layer, sample_rate=16000):
-        # easy-peasy, right?
         self.model = HubertModel.from_pretrained(ckpt_path).eval().cuda()
         self.model.encoder.layer_norm = torch.nn.Identity()  # kludge to avoid applying final layer norm
 
         self.model.encoder.layers = self.model.encoder.layers[:layer]  # not an obob
 
-        # can't use the processor class because our hubert model has no tokenizer
-        # self.processor = AutoProcessor.from_pretrained(ckpt_path)
 
         self.fe = Wav2Vec2FeatureExtractor()
         self.sample_rate = sample_rate
@@ -42,9 +39,6 @@ class HFHubertFeatureReader:
                 # inside the model forward call, but it produces better ASR results for SpireFull
                 batch = self.fe(wav, sampling_rate=self.sample_rate, return_tensors="pt").input_values.cuda()
 
-            outputs = self.model(batch, attention_mask=attention_mask)
-
-            # don't think this should be squeezed anymore
-            # feats = outputs.last_hidden_state.squeeze(0)  # return len x dim
-            feats = outputs.last_hidden_state  # return batch x len x dim
+            # return batch x len x dim
+            feats = self.model(batch, attention_mask=attention_mask).last_hidden_state
             return feats

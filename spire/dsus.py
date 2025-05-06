@@ -1,14 +1,8 @@
-"""
-This source code is licensed under the MIT license found in the
-LICENSE file in the root directory of this source tree.
-"""
-
 import unicodedata
 from os.path import join
 from functools import partial
 
 from tqdm import tqdm
-import torch
 from torch.utils.data import Dataset, DataLoader
 import soundfile as sf
 
@@ -69,7 +63,13 @@ class AudioTSVDataset(Dataset):
 def collate_fn(inputs, feature_extractor):
     # inputs should be a list of dicts returned from AudioTSVDataset
     audios = [inp["audio"] for inp in inputs]
-    inputs = feature_extractor(audios, sampling_rate=feature_extractor.sampling_rate, return_tensors="pt", padding=True, return_attention_mask=True)
+    inputs = feature_extractor(
+        audios,
+        sampling_rate=feature_extractor.sampling_rate,
+        return_tensors="pt",
+        padding=True,
+        return_attention_mask=True
+    )
     return inputs
 
 
@@ -94,7 +94,6 @@ class Labeler:
 
     def _get_indices(self, feats, output_mask=None):
         labels = self.kmeans(feats).masked_fill_(~output_mask, -1)
-        # labels = self.kmeans(feats).to("cpu")
         labels = labels.to("cpu").tolist()  # should be a list of lists
 
         # let's do this with tensors instead: masked_fill_ is the easiest way
@@ -105,7 +104,6 @@ class Labeler:
 
     def label(self, path=None, batch=None, indices_only=False, attention_mask=None):
         feats = self._get_features(path=path, batch=batch, attention_mask=attention_mask)  # b x len x dim
-        # here we can call
         output_mask = self.hubert.model._get_feature_vector_attention_mask(feats.shape[1], attention_mask)
 
         indices = self._get_indices(feats, output_mask=output_mask)
@@ -124,15 +122,12 @@ class Labeler:
             pin_memory=True,
             drop_last=False
         )
-        # make the dataloader...
-        # iterate through batches (will need to provide batch size as well)
-        #
+
         labels = []
         for batch in tqdm(loader):
             inp = batch.input_values.cuda()
-            mask = batch.attention_mask.cuda()  # should it go to cuda here already?
+            mask = batch.attention_mask.cuda()
             input_lengths = mask.sum(dim=-1)
-            output_lengths = self.hubert.model._get_feat_extract_output_lengths(input_lengths)
             batch_labels = self.label(batch=inp, indices_only=indices_only, attention_mask=mask)
-            labels.extend(batch_labels)  # right type?
+            labels.extend(batch_labels)
         return labels
