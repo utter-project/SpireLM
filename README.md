@@ -15,7 +15,7 @@ We release our checkpoints through Hugging Face. All of our models can be loaded
 ## Tokenizing Speech
 The core of our approach to speech is *discretization* - continuous speech signals are converted into sequences of tokens, which can then be processed alongside text. Our discretization system consists of a few steps:
 
-1. HuBERT Large ([fairseq download](https://dl.fbaipublicfiles.com/hubert/hubert_large_ll60k.pt)) converts 16kHz .wav files into into a sequence of feature vectors, one for each 20ms frame. We use the representations from layer 22.
+1. HuBERT Large ([HF hub](https://huggingface.co/facebook/hubert-large-ll60k)) converts 16kHz .wav files into into a sequence of feature vectors, one for each 20ms frame. We use the representations from layer 22.
 2. Our k-means model ([download](https://huggingface.co/utter-project/SpireKMeans/resolve/main/kmeans_model)) maps each frame to one of 5000 clusters.
 3. The sequences of cluster IDs are deduplicated, such that consecutive frames with the same label are collapsed into a single token. This usually shortens the sequence length by about 30%.
 
@@ -29,7 +29,7 @@ from spire.utils import fix_fleurs_path
 fleurs = load_dataset("google/fleurs", "en_us")
 wav = fix_fleurs_path(fleurs["validation"][29], "validation")
 
-labeler = Labeler("hubert_large_ll60k.pt", "kmeans_model")
+labeler = Labeler("facebook/hubert-large-ll60k", kmeans_model)  # replace kmeans_model with the path to the model you downloaded
 speech_tokens = labeler.label(wav)
 print(speech_tokens)
 ```
