@@ -8,11 +8,8 @@ def main(args):
     # should deduplicated be an instance attribute or a labeling parameter?
     labeler = Labeler(
         args.ckpt_path, args.km_path, feature_layer=args.layer,
-        kmeans_device="cuda:0", legacy_audio=args.legacy_audio,
-        deduplicated=not args.no_dedup
+        kmeans_device="cuda:0", deduplicated=not args.no_dedup
     )
-    # generator, num = get_path_iterator(args.tsv_path, args.nshard, args.rank)
-    # iterator = generator()
 
     with open(args.out_path, "w") as f:
         predictions = labeler.label_corpus(
@@ -32,9 +29,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--tsv_path")
     parser.add_argument("--out_path", required=True)
-    parser.add_argument("--ckpt_path", default="/mnt/scratch-artemis/kshitij/clustering/feature_extraction/model/hubert_large_ll60k.pt")
+    parser.add_argument("--ckpt_path", default="facebook/hubert-large-ll60k")
     parser.add_argument("--km_path", default="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000")
-    parser.add_argument("--layer", type=int, default=22)  # 22
+    parser.add_argument("--layer", type=int, default=22)
     parser.add_argument("--as-indices", action="store_true")
     parser.add_argument("--legacy-audio", action="store_true")
     parser.add_argument("--no-dedup", action="store_true")

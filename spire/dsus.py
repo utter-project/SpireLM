@@ -44,7 +44,7 @@ class AudioTSVDataset(Dataset):
         with open(tsv_path) as f:
             root = f.readline().rstrip()
             lines = [line.rstrip().split("\t") for line in f]
-        self.data = [(join(root, wav), n_samples) for (wav, n_samples) in lines]
+        self.data = [(join(root, wav), int(n_samples)) for (wav, n_samples) in lines]
         # self.data = sorted(self.data, key=lambda x: x[1], reverse=True)
         self.sample_rate = sample_rate
 
@@ -89,30 +89,26 @@ class Labeler:
         self.deduplicated = deduplicated
         self.dsu_format = dsu_format
 
-    def _get_features(self, path=None, batch=None, nsample=None, attention_mask=None):
-        return self.hubert.get_feats(path=path, batch=batch, ref_len=nsample, attention_mask=attention_mask)
+    def label(self, path=None, batch=None, indices_only=False, attention_mask=None):
+        feats = self.hubert.get_feats(path=path, batch=batch, attention_mask=attention_mask)  # b x len x dim
+        labels = self.kmeans(feats)
 
-    def _get_indices(self, feats, output_mask=None):
-        labels = self.kmeans(feats).masked_fill_(~output_mask, -1)
+        if attention_mask is not None:
+            output_mask = self.hubert.model._get_feature_vector_attention_mask(feats.shape[1], attention_mask)
+            labels.masked_fill_(~output_mask, -1)
+
+        # This block is detokenization: account for deduplication and detensorizing
+        # the predictions
         labels = labels.to("cpu").tolist()  # should be a list of lists
-
-        # let's do this with tensors instead: masked_fill_ is the easiest way
-        # labels = [lab[:output_length] for lab, output_length in zip(labels, output_lengths)]
         if self.deduplicated:
             labels = [dedup([l for l in lab if l != -1]) for lab in labels]
-        return labels
 
-    def label(self, path=None, batch=None, indices_only=False, attention_mask=None):
-        feats = self._get_features(path=path, batch=batch, attention_mask=attention_mask)  # b x len x dim
-        output_mask = self.hubert.model._get_feature_vector_attention_mask(feats.shape[1], attention_mask)
-
-        indices = self._get_indices(feats, output_mask=output_mask)
         if indices_only:
-            return indices
-        labels = [indices2dsus(ix) for ix in indices]
+            return labels
+        labels = [indices2dsus(ix) for ix in labels]
         return labels
 
-    def label_corpus(self, tsv_path, sample_rate=16000, indices_only=False, batch_size=1, num_workers=1):
+    def label_corpus(self, tsv_path, sample_rate=16000, indices_only=False, batch_size=1, num_workers=0):
         dataset = AudioTSVDataset(tsv_path, sample_rate=sample_rate)
         loader = DataLoader(
             dataset,
@@ -129,5 +125,7 @@ class Labeler:
             mask = batch.attention_mask.cuda()
             input_lengths = mask.sum(dim=-1)
             batch_labels = self.label(batch=inp, indices_only=indices_only, attention_mask=mask)
+            # total_tokens = inp.numel()
+            # nonpad = mask.sum().item()
             labels.extend(batch_labels)
         return labels

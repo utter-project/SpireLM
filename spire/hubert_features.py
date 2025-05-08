@@ -27,7 +27,6 @@ class HFHubertFeatureReader:
         assert (batch is not None) != (path is not None), \
             "Must specify batch or path but not both"
         with torch.no_grad():
-            # But first, read in the file
             if path is not None:
                 # read the path, preprocess it
                 wav, sample_rate = sf.read(path, dtype="float32")
