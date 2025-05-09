@@ -1,11 +1,8 @@
-from functools import partial
-
 from tqdm import tqdm
-from torch.utils.data import DataLoader
 
 from spire.kmeans import KmeansForInference
 from spire.hubert_features import HFHubertFeatureReader
-from spire.data import AudioTSVDataset, collate_fn
+from spire.data import build_dataloader
 from spire.utils import indices2dsus, deduplicate
 
 
@@ -43,22 +40,24 @@ class Labeler:
         return labels
 
     def label_corpus(self, tsv_path, sample_rate=16000, indices_only=False, batch_size=1, num_workers=0):
-        dataset = AudioTSVDataset(tsv_path, sample_rate=sample_rate)
-        loader = DataLoader(
-            dataset,
+        loader, n_batches = build_dataloader(
+            path=tsv_path,
+            sample_rate=sample_rate,
             batch_size=batch_size,
-            collate_fn=partial(collate_fn, feature_extractor=self.hubert.fe),
-            num_workers=num_workers,
-            pin_memory=True,
-            drop_last=False
+            feature_extractor=self.hubert.fe,
+            num_workers=num_workers
         )
 
         labels = []
-        for batch in tqdm(loader):
+        indices = []
+        for batch in tqdm(loader, total=n_batches):
             inp = batch.input_values.cuda()
             mask = batch.attention_mask.cuda()
             batch_labels = self.label(batch=inp, indices_only=indices_only, attention_mask=mask)
             # total_tokens = inp.numel()
             # nonpad = mask.sum().item()
+            # print(inp.shape, nonpad / total_tokens)
             labels.extend(batch_labels)
+            indices.extend(batch.indices)
+        labels = [label for i, label in sorted(zip(indices, labels))]  # return to corpus order
         return labels
