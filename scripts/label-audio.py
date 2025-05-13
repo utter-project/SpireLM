@@ -3,7 +3,8 @@ from tqdm import tqdm
 
 import torch
 
-from spire.dsus import Labeler
+from spire.dsus import detokenize
+from spire.hubert_labeler import HubertLabeler
 from spire.data import build_dataloader
 
 
@@ -12,10 +13,17 @@ def main(args):
     dtype = dtypes[args.dtype]
 
     # should deduplicated be an instance attribute or a labeling parameter?
+    """
     labeler = Labeler(
         args.ckpt_path, args.km_path, feature_layer=args.layer,
         deduplicated=not args.no_dedup, dtype=dtype
     )
+    """
+    labeler = HubertLabeler(
+        args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype
+    )
+    # compile the labeler?
+    labeler = labeler.to(device="cuda")
 
     loader, n_batches = build_dataloader(
         path=args.tsv_path,
@@ -30,11 +38,17 @@ def main(args):
         for batch in tqdm(loader, total=n_batches):
             inp = batch.input_values.to(dtype=dtype, device="cuda")
             mask = batch.attention_mask.cuda()
-            batch_labels = labeler.label(batch=inp, indices_only=args.as_indices, attention_mask=mask)
+            # batch_labels = labeler.label(batch=inp, indices_only=args.as_indices, attention_mask=mask)
+            batch_labels = labeler.predict(batch=inp, attention_mask=mask)
+            detokenized_labels = detokenize(
+                batch_labels,
+                indices_only=args.as_indices,
+                deduplicated=not args.no_dedup
+            )
             # total_tokens = inp.numel()
             # nonpad = mask.sum().item()
             # print(inp.shape, nonpad / total_tokens)
-            labels.extend(batch_labels)
+            labels.extend(detokenized_labels)
             indices.extend(batch.indices)
 
     predictions = [label for i, label in sorted(zip(indices, labels))]
