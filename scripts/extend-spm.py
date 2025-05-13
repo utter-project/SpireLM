@@ -5,7 +5,7 @@ This script allows
 import argparse
 
 from spire.tokenizer_extension import extend_spm, convert_spm_to_hf, add_instruct_extras
-from spire.dsus import indices2dsus
+from spire.utils import indices2dsus
 
 
 def main(args):

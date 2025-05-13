@@ -3,7 +3,7 @@ from tqdm import tqdm
 
 import torch
 
-from spire.dsus import detokenize
+from spire.utils import detokenize
 from spire.hubert_labeler import HubertLabeler
 from spire.data import build_dataloader
 
@@ -24,6 +24,7 @@ def main(args):
     )
 
     labeler = labeler.to(device="cuda")
+    labeler.eval()
     if args.compile:
         labeler = torch.compile(labeler)
 

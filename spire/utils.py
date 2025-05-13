@@ -1,12 +1,15 @@
 from os.path import exists, join, basename, dirname
 import unicodedata
 
+import soundfile as sf
+from transformers import Wav2Vec2FeatureExtractor
+
 
 PRIVATE_OFFSET = 983040
 
 
 def is_private_character(char):
-    return unicodedata.category(private_char) == "Co"
+    return unicodedata.category(char) == "Co"
 
 
 def extra_id(i):
@@ -32,6 +35,27 @@ def deduplicate(tokens):
             out_tokens.append(t)
             last_token = t
     return out_tokens
+
+
+def load_wav(path, device, expected_sample_rate=None):
+    feature_extractor = Wav2Vec2FeatureExtractor()
+    wav, sample_rate = sf.read(path, dtype="float32")
+    if expected_sample_rate is not None:
+        assert sample_rate == expected_sample_rate, "Expected sample rate {}, got {}".format(expected_sample_rate, sample_rate)
+
+    batch = feature_extractor(wav, sampling_rate=expected_sample_rate, return_tensors="pt").input_values.to(device)
+    return batch
+
+
+def detokenize(labels, indices_only=False, deduplicated=True):
+    labels = labels.to("cpu").tolist()  # should be a list of lists
+    if deduplicated:
+        labels = [deduplicate([l for l in lab if l != -1]) for lab in labels]
+
+    if indices_only:
+        return labels
+    labels = [indices2dsus(ix) for ix in labels]
+    return labels
 
 
 def fix_librispeech_path(ex_dict, path_extra, split):

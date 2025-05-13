@@ -3,6 +3,8 @@ import torch.nn as nn
 import joblib
 from transformers import HubertModel
 
+from spire.utils import load_wav, detokenize
+
 
 # this whole thing needs to be refactored, I think. And that's fine.
 # but also, the feature-reading/kmeans could be refactored into a single
@@ -14,16 +16,6 @@ class HubertLabeler(nn.Module):
     def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32):
         super().__init__()
 
-        """
-        Todos here:
-        - replace self.hubert with a transformers.HubertModel
-        - make the kmeans be another layer or something; a parameter of this model, anyway
-        - figure out a way to load the kmeans weights
-        """
-
-        # maybe we add a load classmethod?
-        # note the eval() and cuda() stuff, which needs to be handled somewhere
-        # else
         self.model = HubertModel.from_pretrained(ckpt_path, torch_dtype=dtype)
         self.model.encoder.layer_norm = nn.Identity()  # kludge to avoid applying final layer norm
         self.model.encoder.layers = self.model.encoder.layers[:layer]
@@ -49,6 +41,21 @@ class HubertLabeler(nn.Module):
             output_mask = self.model._get_feature_vector_attention_mask(dist.shape[1], attention_mask)
             labels.masked_fill_(~output_mask, -1)
         return labels
+
+    def label_wav(self, wav_path, **detok_args):
+        # read the audio into a batch
+        device = self.kmeans.C.device
+        batch = load_wav(
+            wav_path, device=device, expected_sample_rate=16000
+        )
+
+        # call self.predict (no attention mask because it's a single-element batch)
+        labels = self.predict(batch)
+
+        # detokenize
+        detokenized_labels = detokenize(labels, **detok_args)
+
+        return detokenized_labels
 
 
 class KMeans(nn.Module):
