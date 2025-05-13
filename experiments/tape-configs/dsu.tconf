@@ -1,6 +1,7 @@
 global {
     hubert_model="facebook/hubert-large-ll60k"
     hubert_layer=22
+    hubert_dtype=(HubertDtype: fp32 bf16)
 
     km_model="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000"
 

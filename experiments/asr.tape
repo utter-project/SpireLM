@@ -30,6 +30,7 @@ task LabelAudio
     :: hubert_model=@
     :: hubert_layer=@
     :: km_model=@
+    :: hubert_dtype=@
     :: repo=@
 {
     python $repo/scripts/label-audio.py \
@@ -37,7 +38,29 @@ task LabelAudio
         --out_path $dsus \
         --ckpt_path $hubert_model \
         --layer $hubert_layer \
-        --km_path $km_model
+        --km_path $km_model \
+        --batch-size 1000000 \
+        --dtype $hubert_dtype
+}
+
+task LabelAudioDupe
+    < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
+    > dsus=dsu.txt
+    :: hubert_model=@
+    :: hubert_layer=@
+    :: km_model=@
+    :: hubert_dtype=@
+    :: repo=@
+{
+    python $repo/scripts/label-audio.py \
+        --tsv_path $wav_tsv \
+        --out_path $dsus \
+        --ckpt_path $hubert_model \
+        --layer $hubert_layer \
+        --km_path $km_model \
+        --batch-size 1000000 \
+        --dtype $hubert_dtype \
+        --no-dedup
 }
 
 task LabelAudioLegacy
@@ -197,8 +220,16 @@ task ComputeWER
 
 ##### Data Preparation #####
 
+plan Convert {
+    reach ConvertTSV via (ASRDataset: ls_clean ls_other)
+}
+
 plan Labelize {
     reach LabelAudio via (ASRDataset: *)
+}
+
+plan LabelizeBF16 {
+    reach LabelAudio via (ASRDataset: *) * (HubertDtype: bf16)
 }
 
 plan LabelizeLegacy {
@@ -213,6 +244,10 @@ plan LabelizeNew {
 
 plan DecodeSpireFull {
     reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full)
+}
+
+plan DecodeSpireFullBF16 {
+    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full) * (HubertDtype: bf16)
 }
 
 plan DecodeTowerSpire {
@@ -231,6 +266,10 @@ plan DecodeWh {
 
 plan ComputeWERSpireFull {
     reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full)
+}
+
+plan ComputeWERSpireFullBF16 {
+    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full) * (HubertDtype: bf16)
 }
 
 plan ComputeWERTowerSpire {
