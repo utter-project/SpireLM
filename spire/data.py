@@ -3,6 +3,7 @@ from functools import partial
 
 import soundfile as sf
 from torch.utils.data import Dataset, Sampler, BatchSampler, DataLoader
+from transformers import Wav2Vec2FeatureExtractor
 
 
 class AudioTSVDataset(Dataset):
@@ -88,8 +89,9 @@ class TokenBatchSampler(BatchSampler):
         raise TypeError("The number of batches in a token-batched epoch is not known in advance")
 
 
-def build_dataloader(path, sample_rate=16000, feature_extractor=None, num_workers=0, batch_size=1):
-    # self.hubert.fe
+def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1):
+    feature_extractor = Wav2Vec2FeatureExtractor()
+
     dataset = AudioTSVDataset(path, sample_rate=sample_rate)
     sampler = LengthSortedAudioSampler(dataset)
     batch_sampler = TokenBatchSampler(dataset, sampler, batch_size)
