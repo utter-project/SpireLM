@@ -22,8 +22,10 @@ def main(args):
     labeler = HubertLabeler(
         args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype
     )
-    # compile the labeler?
+
     labeler = labeler.to(device="cuda")
+    if args.compile:
+        labeler = torch.compile(labeler)
 
     loader, n_batches = build_dataloader(
         path=args.tsv_path,
@@ -73,6 +75,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--num-workers", type=int, default=1)
     parser.add_argument("--dtype", default="fp32", choices=["fp32", "bf16"])
+    parser.add_argument("--compile", action="store_true")
     args = parser.parse_args()
 
     main(args)
