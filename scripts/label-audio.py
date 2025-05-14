@@ -32,7 +32,8 @@ def main(args):
         path=args.tsv_path,
         sample_rate=16000,
         batch_size=args.batch_size,
-        num_workers=args.num_workers
+        num_workers=args.num_workers,
+        dataset_type=args.dataset_type
     )
 
     with torch.no_grad():
@@ -52,9 +53,13 @@ def main(args):
             # nonpad = mask.sum().item()
             # print(inp.shape, nonpad / total_tokens)
             labels.extend(detokenized_labels)
-            indices.extend(batch.indices)
+            if hasattr(batch, "indices"):
+                indices.extend(batch.indices)
 
-    predictions = [label for i, label in sorted(zip(indices, labels))]
+    if args.dataset_type == "tsv":
+        predictions = [label for i, label in sorted(zip(indices, labels))]
+    else:
+        predictions = labels
 
     with open(args.out_path, "w") as f:
         for pred in predictions:
@@ -77,6 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("--num-workers", type=int, default=1)
     parser.add_argument("--dtype", default="fp32", choices=["fp32", "bf16"])
     parser.add_argument("--compile", action="store_true")
+    parser.add_argument("--dataset-type", default="tsv", choices=["tsv", "commonvoice", "spgi", "gigaspeech"])
     args = parser.parse_args()
 
     main(args)
