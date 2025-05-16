@@ -4,7 +4,7 @@ from functools import partial
 import soundfile as sf
 from torch.utils.data import Dataset, Sampler, BatchSampler, DataLoader
 from transformers import Wav2Vec2FeatureExtractor
-from datasets import load_from_disk, Audio
+from datasets import load_from_disk, load_dataset, Audio
 
 
 class AudioTSVDataset(Dataset):
@@ -127,6 +127,15 @@ def load_spgi(path, split="train"):
     return dataset
 
 
+def load_vctk(path, split="train"):
+    """
+    Identical to the commonvoice one besides the path parsing
+    """
+    dataset = load_dataset(path, split=split)
+    dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
+    return dataset
+
+
 # todo: abstract this out for HF datasets
 def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, dataset_type="tsv"):
 
@@ -152,8 +161,10 @@ def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, datas
             dataset = load_commonvoice(path, split="train")
         elif dataset_type == "spgi":
             dataset = load_spgi(path)
-        else:
+        elif dataset_type == "gigaspeech":
             dataset = load_gigaspeech(path)
+        else:
+            dataset = load_vctk(path)
 
         loader = DataLoader(
             dataset,

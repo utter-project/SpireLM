@@ -24,6 +24,69 @@ task ConvertTSV
     python $repo/scripts/convert_tsv.py --input-tsv $native_tsv --output-tsv $wav_tsv --output-dir $wav
 }
 
+task LabelVCTK
+    > dsus=dsus_no_dedup.txt
+    :: hubert_model=@
+    :: hubert_layer=@
+    :: km_model=@
+    :: hubert_dtype=@
+    :: repo=@
+{
+    python $repo/scripts/label-audio.py \
+        --tsv_path CSTR-Edinburgh/vctk \
+        --dataset-type vctk \
+        --out_path $dsus \
+        --batch-size 4 \
+        --num-workers 0 \
+        --ckpt_path $hubert_model \
+        --layer $hubert_layer \
+        --km_path $km_model \
+        --no-dedup
+}
+
+task DeduplicateVCTKLabels
+    < dsus_no_dedup=$dsus@LabelVCTK
+    > dsus=dsus.txt
+    :: repo=@
+{
+    python $repo/scripts/deduplicate.py < $dsus_no_dedup > $dsus
+}
+
+task BuildVCTKInstructions
+    < test_dsus=$dsus@DeduplicateVCTKLabels
+    > instructions=instructions.json
+    :: template=@
+    :: speech2text_tokenizer=@
+    :: repo=@
+{
+    # template, language pair, number of shots
+    python $repo/scripts/build_instructions.py \
+        --src $test_dsus \
+        --template $template \
+        --n-shots 0 \
+        --chat-tokenizer $speech2text_tokenizer \
+        --out $instructions
+}
+
+task DecodeVCTK
+    < instructions=@BuildVCTKInstructions
+    > hyps=hyps.txt
+    :: speech2text_model=@
+    :: speech2text_tokenizer=@
+    :: max_tokens=@
+    :: backend=@
+    :: repo=@
+{
+    python $repo/scripts/inference.py \
+        --inpaths $instructions \
+        --outpaths $hyps \
+        --model $speech2text_model \
+        --tokenizer $speech2text_tokenizer \
+        --backend $backend \
+        --max-length $max_tokens
+
+}
+
 task LabelAudio
     < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
     > dsus=dsu.txt
@@ -216,6 +279,20 @@ task ComputeWER
     :: repo=@
 {
     python $repo/scripts/compute_wer.py --hyp $hyps_normalized --ref $refs_normalized > $results
+}
+
+##### VCTK Experiments #####
+
+plan LabelizeVCTK {
+    reach LabelVCTK
+}
+
+plan VCTKInstructions {
+    reach BuildVCTKInstructions via (Speech2TextModel: spire_full)
+}
+
+plan DecodeVCTKSpireFull {
+    reach DecodeVCTK via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full)
 }
 
 ##### Data Preparation #####

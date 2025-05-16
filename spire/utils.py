@@ -18,7 +18,7 @@ def extra_id(i):
 
 def pua(i):
     private_char = chr(int(i) + PRIVATE_OFFSET)
-    assert is_private_character(private_char)
+    assert is_private_character(private_char), i
     return private_char
 
 
@@ -49,8 +49,9 @@ def load_wav(path, device, expected_sample_rate=None):
 
 def detokenize(labels, indices_only=False, deduplicated=True):
     labels = labels.to("cpu").tolist()  # should be a list of lists
+    labels = [[l for l in lab if l != -1] for lab in labels]
     if deduplicated:
-        labels = [deduplicate([l for l in lab if l != -1]) for lab in labels]
+        labels = [deduplicate(lab) for lab in labels]
 
     if indices_only:
         return labels
