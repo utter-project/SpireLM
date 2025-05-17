@@ -319,6 +319,10 @@ plan LabelizeNew {
 
 ##### Hypothesis Generation #####
 
+plan DecodeAll {
+    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *)
+}
+
 plan DecodeSpireFull {
     reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full)
 }
@@ -340,6 +344,10 @@ plan DecodeWh {
 }
 
 ##### Evaluation #####
+
+plan ComputeWERAll {
+    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *)
+}
 
 plan ComputeWERSpireFull {
     reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full)

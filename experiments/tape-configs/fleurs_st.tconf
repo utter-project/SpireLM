@@ -1,0 +1,48 @@
+import "uservars_fleurs_st.tconf"
+import "models.tconf"
+import "dsu.tconf"
+import "languages.tconf"
+
+global {
+    ducttape_experimental_imports=true
+    ducttape_experimental_submitters=true
+    ducttape_experimental_multiproc=true
+    seed=42
+
+    n_shots=(NShots: zero=0 five=5 one=1 three=3 ten=10)
+
+    flores_path="openlanguagedata/flores_plus"
+
+    comet_model="Unbabel/wmt22-comet-da"
+
+    # change template
+    st_template=st_simple
+
+    # this should ideally be refactored out
+    # wait no...we don't want this period
+    st_dataset=(
+        STDataset:
+            fleurs="google/fleurs"
+    )
+    st_path_extra=(
+        STDataset:
+            fleurs="en_us"
+    )
+    st_split="test"
+
+    st_file_type=(
+        STDataset:
+            fleurs="wav"
+    )
+
+    st_text_field=(
+        STDataset:
+            fleurs="raw_transcription"
+    )
+
+    # it's probably fine to use the same value across all models
+    max_tokens=(MaxTokens: 256 128 512)
+
+    backend=(Backend: vllm hf)
+
+}
