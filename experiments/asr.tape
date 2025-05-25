@@ -44,6 +44,28 @@ task LabelVCTK
         --no-dedup
 }
 
+task LabelCommonvoice
+    > dsus=dsus_no_dedup.txt
+    :: hubert_model=@
+    :: hubert_layer=@
+    :: km_model=@
+    :: hubert_dtype=@
+    :: commonvoice_path=@
+    :: repo=@
+{
+    python $repo/scripts/label-audio.py \
+        --tsv_path $commonvoice_path \
+        --dataset-type commonvoice \
+        --out_path $dsus \
+        --batch-size 4 \
+        --num-workers 0 \
+        --ckpt_path $hubert_model \
+        --layer $hubert_layer \
+        --km_path $km_model \
+        --dtype $hubert_dtype \
+        --no-dedup
+}
+
 task DeduplicateVCTKLabels
     < dsus_no_dedup=$dsus@LabelVCTK
     > dsus=dsus.txt
@@ -368,3 +390,14 @@ plan ComputeSeamlessWER {
 plan ComputeWhisperWER {
     reach ComputeWER via (ASRDataset: *) * (ModelFamily: whisper) * (Speech2TextModel: whisper whisper_medium whisper_small whisper_base)
 }
+
+##### Commonvoice DSU labeling (for analysis)
+
+plan CVFP32 {
+    reach LabelCommonvoice via (HubertDtype: fp32)
+}
+
+plan CVBF16 {
+    reach LabelCommonvoice via (HubertDtype: bf16)
+}
+

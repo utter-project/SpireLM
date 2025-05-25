@@ -8,6 +8,12 @@ from spire.hubert_labeler import HubertLabeler
 from spire.data import build_dataloader
 
 
+def pred2str(pred):
+    if isinstance(pred, list):
+        pred = " ".join([str(label) for label in pred])
+    return pred
+
+
 def main(args):
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
@@ -36,36 +42,36 @@ def main(args):
         dataset_type=args.dataset_type
     )
 
-    with torch.no_grad():
-        labels = []
-        indices = []
-        for batch in tqdm(loader, total=n_batches):
-            inp = batch.input_values.to(dtype=dtype, device="cuda")
-            mask = batch.attention_mask.cuda()
-            # batch_labels = labeler.label(batch=inp, indices_only=args.as_indices, attention_mask=mask)
-            batch_labels = labeler.predict(batch=inp, attention_mask=mask)
-            detokenized_labels = detokenize(
-                batch_labels,
-                indices_only=args.as_indices,
-                deduplicated=not args.no_dedup
-            )
-            # total_tokens = inp.numel()
-            # nonpad = mask.sum().item()
-            # print(inp.shape, nonpad / total_tokens)
-            labels.extend(detokenized_labels)
-            if hasattr(batch, "indices"):
-                indices.extend(batch.indices)
-
-    if args.dataset_type == "tsv":
-        predictions = [label for i, label in sorted(zip(indices, labels))]
-    else:
-        predictions = labels
-
     with open(args.out_path, "w") as f:
-        for pred in predictions:
-            if isinstance(pred, list):
-                pred = " ".join([str(label) for label in pred])
-            f.write(pred + "\n")
+        with torch.no_grad():
+            labels = []
+            indices = []
+            for batch in tqdm(loader, total=n_batches):
+                inp = batch.input_values.to(dtype=dtype, device="cuda")
+                mask = batch.attention_mask.cuda()
+                # batch_labels = labeler.label(batch=inp, indices_only=args.as_indices, attention_mask=mask)
+                batch_labels = labeler.predict(batch=inp, attention_mask=mask)
+                detokenized_labels = detokenize(
+                    batch_labels,
+                    indices_only=args.as_indices,
+                    deduplicated=not args.no_dedup
+                )
+                # total_tokens = inp.numel()
+                # nonpad = mask.sum().item()
+                # print(inp.shape, nonpad / total_tokens)
+
+                if args.dataset_type == "tsv":
+
+                    labels.extend(detokenized_labels)
+                    if hasattr(batch, "indices"):
+                        indices.extend(batch.indices)
+                else:
+                    f.write(pred2str(detokenized_labels) + "\n")
+
+        if args.dataset_type == "tsv":
+            predictions = [label for i, label in sorted(zip(indices, labels))]
+            for pred in predictions:
+                f.write(pred2str(pred) + "\n")
 
 
 if __name__ == "__main__":
