@@ -22,6 +22,12 @@ def pua(i):
     return private_char
 
 
+def depua(char):
+    assert is_private_character(char), char
+    i = ord(char) - PRIVATE_OFFSET
+    return i
+
+
 def indices2dsus(indices, dsu_format="pua"):
     dsu_formatter = pua if dsu_format == "pua" else extra_id
     return "".join([dsu_formatter(i) for i in indices])

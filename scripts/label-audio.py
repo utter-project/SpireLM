@@ -8,10 +8,15 @@ from spire.hubert_labeler import HubertLabeler
 from spire.data import build_dataloader
 
 
-def pred2str(pred):
+def pred2str_single(pred):
     if isinstance(pred, list):
-        pred = " ".join([str(label) for label in pred])
+        labels = [str(label) for label in pred]
+        pred = " ".join(labels)
     return pred
+
+
+def pred2str(pred):
+    return [pred2str_single(p) for p in pred]
 
 
 def main(args):
@@ -56,6 +61,7 @@ def main(args):
                     indices_only=args.as_indices,
                     deduplicated=not args.no_dedup
                 )
+
                 # total_tokens = inp.numel()
                 # nonpad = mask.sum().item()
                 # print(inp.shape, nonpad / total_tokens)
@@ -66,7 +72,8 @@ def main(args):
                     if hasattr(batch, "indices"):
                         indices.extend(batch.indices)
                 else:
-                    f.write(pred2str(detokenized_labels) + "\n")
+                    for p in pred2str(detokenized_labels):
+                        f.write(p + "\n")
 
         if args.dataset_type == "tsv":
             predictions = [label for i, label in sorted(zip(indices, labels))]
