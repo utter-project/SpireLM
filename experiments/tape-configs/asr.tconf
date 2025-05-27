@@ -85,4 +85,8 @@ global {
     backend=(Backend: vllm hf)
 
     normalizer=(Normalizer: english basic)
+
+    counts="/mnt/data-artemis/bpop/cv-32to16.pickle"
+    threshold=(Threshold: 10000 20000 30000 40000 50000 60000 70000 80000 90000 100000)
+    simplification_mode=(SimplificationMode: basic iterative)
 }

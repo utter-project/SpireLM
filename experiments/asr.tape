@@ -183,6 +183,62 @@ task LabelAudioNew
         --km_path $km_model
 }
 
+task SimplifyLabels
+    < dsus_raw=$dsus@LabelAudioDupe
+    > dsus_dupe=dsu.txt.dupe
+    > dsus=dsu.txt
+    :: threshold=@
+    :: counts=@
+    :: km_model=@
+    :: simplification_mode=@
+    :: repo=@
+{
+    python $repo/scripts/simplify_clusters.py \
+        --km_path $km_model \
+        --counts $counts \
+        --threshold $threshold \
+        --input-clusters $dsus_raw \
+        --output-clusters $dsus_dupe \
+        --simplification-mode $simplification_mode
+
+    python $repo/scripts/deduplicate.py < $dsus_dupe > $dsus
+}
+
+task BuildInstructionsSimplified
+    < test_dsus=$dsus@SimplifyLabels
+    > instructions=instructions.json
+    :: template=@
+    :: speech2text_tokenizer=@
+    :: repo=@
+{
+    # template, language pair, number of shots
+    python $repo/scripts/build_instructions.py \
+        --src $test_dsus \
+        --template $template \
+        --n-shots 0 \
+        --chat-tokenizer $speech2text_tokenizer \
+        --out $instructions
+}
+
+task DecodeSimplified
+    < instructions=@BuildInstructionsSimplified
+    > hyps=hyps.txt
+    :: speech2text_model=@
+    :: speech2text_tokenizer=@
+    :: max_tokens=@
+    :: backend=@
+    :: repo=@
+{
+    python $repo/scripts/inference.py \
+        --inpaths $instructions \
+        --outpaths $hyps \
+        --model $speech2text_model \
+        --tokenizer $speech2text_tokenizer \
+        --backend $backend \
+        --max-length $max_tokens
+
+}
+
 task BuildInstructions
     < test_dsus=$dsus@LabelAudio
     > instructions=instructions.json
@@ -294,8 +350,26 @@ task NormalizeRefs
     python $repo/scripts/normalize.py --normalizer $normalizer < $references > $refs_normalized
 }
 
+task NormalizeHypsSimplified
+    < hyps=@DecodeSimplified
+    > hyps_normalized=hyps.txt.norm
+    :: normalizer=@
+    :: repo=@
+{
+    python $repo/scripts/normalize.py --normalizer $normalizer < $hyps > $hyps_normalized
+}
+
 task ComputeWER
     < hyps_normalized=@NormalizeHyps
+    < refs_normalized=@NormalizeRefs
+    > results=wer.json
+    :: repo=@
+{
+    python $repo/scripts/compute_wer.py --hyp $hyps_normalized --ref $refs_normalized > $results
+}
+
+task ComputeWERSimplified
+    < hyps_normalized=@NormalizeHypsSimplified
     < refs_normalized=@NormalizeRefs
     > results=wer.json
     :: repo=@
@@ -399,5 +473,31 @@ plan CVFP32 {
 
 plan CVBF16 {
     reach LabelCommonvoice via (HubertDtype: bf16)
+}
+
+##### DSU "simplification" #####
+
+plan LabelizeDupe {
+    reach LabelAudioDupe via (ASRDataset: *)
+}
+
+plan Simplify {
+    reach BuildInstructionsSimplified via (ASRDataset: *) * (Speech2TextModel: spire_full) * (Threshold: *) * (SimplificationMode: *)
+}
+
+plan DecodeSpireFullSimplified {
+    reach DecodeSimplified via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full) * (Threshold: *)
+}
+
+plan ComputeWERSimple {
+    reach ComputeWERSimplified via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full) * (Threshold: *)
+}
+
+plan DecodeSpireFullSimplifiedIterative {
+    reach DecodeSimplified via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full) * (Threshold: *) * (SimplificationMode: iterative)
+}
+
+plan ComputeWERSimpleIterative {
+    reach ComputeWERSimplified via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full) * (Threshold: *) * (SimplificationMode: iterative)
 }
 
