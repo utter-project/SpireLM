@@ -76,9 +76,9 @@ def main(args):
                         f.write(p + "\n")
 
         if args.dataset_type == "tsv":
-            predictions = [label for i, label in sorted(zip(indices, labels))]
+            predictions = pred2str([label for i, label in sorted(zip(indices, labels))])
             for pred in predictions:
-                f.write(pred2str(pred) + "\n")
+                f.write(pred + "\n")
 
 
 if __name__ == "__main__":
