@@ -44,7 +44,9 @@ def main(args):
         sample_rate=16000,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        dataset_type=args.dataset_type
+        dataset_type=args.dataset_type,
+        start_ix=args.start_ix,
+        n_examples=args.n_examples
     )
 
     with open(args.out_path, "w") as f:
@@ -96,6 +98,8 @@ if __name__ == "__main__":
     parser.add_argument("--dtype", default="fp32", choices=["fp32", "bf16"])
     parser.add_argument("--compile", action="store_true")
     parser.add_argument("--dataset-type", default="tsv", choices=["tsv", "commonvoice", "spgi", "gigaspeech", "vctk"])
+    parser.add_argument("--start-ix", type=int, default=0, help="For slicing an HF dataset (start index in the corpus)")
+    parser.add_argument("--n-examples", type=int, default=0, help="For slicing an HF dataset (number of examples to take, starting with start-ix)")
     args = parser.parse_args()
 
     main(args)

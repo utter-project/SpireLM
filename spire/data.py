@@ -137,7 +137,7 @@ def load_vctk(path, split="train"):
 
 
 # todo: abstract this out for HF datasets
-def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, dataset_type="tsv"):
+def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0, n_examples=0):
 
     feature_extractor = Wav2Vec2FeatureExtractor()
     if dataset_type == "tsv":
@@ -165,6 +165,11 @@ def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, datas
             dataset = load_gigaspeech(path)
         else:
             dataset = load_vctk(path)
+
+        dataset = dataset.skip(start_ix)
+        if n_examples > 0:
+            examples_to_take = min(len(dataset), n_examples)
+            dataset = dataset.take(examples_to_take)
 
         loader = DataLoader(
             dataset,

@@ -5,5 +5,5 @@ global {
 
     km_model="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000"
 
-    dsu_format=(DSUFormat: extra_id pua)
+    # dsu_format=(DSUFormat: extra_id pua)
 }
