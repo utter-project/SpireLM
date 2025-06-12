@@ -39,14 +39,15 @@ def main(args):
     if args.compile:
         labeler = torch.compile(labeler)
 
-    loader, n_batches = build_dataloader(
+    loader, n_batches, raw_length = build_dataloader(
         path=args.tsv_path,
         sample_rate=16000,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         dataset_type=args.dataset_type,
         start_ix=args.start_ix,
-        n_examples=args.n_examples
+        n_examples=args.n_examples,
+        validate_examples=args.validate_examples
     )
 
     with open(args.out_path, "w") as f:
@@ -64,23 +65,30 @@ def main(args):
                     deduplicated=not args.no_dedup
                 )
 
-                # total_tokens = inp.numel()
-                # nonpad = mask.sum().item()
-                # print(inp.shape, nonpad / total_tokens)
+                labels.extend(detokenized_labels)
+                indices.extend(batch.indices)
 
-                if args.dataset_type == "tsv":
-
-                    labels.extend(detokenized_labels)
-                    if hasattr(batch, "indices"):
-                        indices.extend(batch.indices)
-                else:
+                '''
+                if args.dataset_type != "tsv":
                     for p in pred2str(detokenized_labels):
                         f.write(p + "\n")
+                '''
 
+        idx2labels = dict(zip(indices, labels))
+        for i in range(raw_length):
+            if i not in idx2labels:
+                # this should be extremely rare
+                f.write("\n")
+                continue
+            label_string = pred2str_single(idx2labels[i])
+            f.write(label_string + "\n")
+
+        '''
         if args.dataset_type == "tsv":
             predictions = pred2str([label for i, label in sorted(zip(indices, labels))])
             for pred in predictions:
                 f.write(pred + "\n")
+        '''
 
 
 if __name__ == "__main__":
@@ -100,6 +108,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset-type", default="tsv", choices=["tsv", "commonvoice", "spgi", "gigaspeech", "vctk"])
     parser.add_argument("--start-ix", type=int, default=0, help="For slicing an HF dataset (start index in the corpus)")
     parser.add_argument("--n-examples", type=int, default=0, help="For slicing an HF dataset (number of examples to take, starting with start-ix)")
+    parser.add_argument("--validate-examples", action="store_true")
     args = parser.parse_args()
 
     main(args)

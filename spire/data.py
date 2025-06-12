@@ -1,6 +1,7 @@
 from os.path import join
 from functools import partial
 
+from tqdm import tqdm
 import soundfile as sf
 from torch.utils.data import Dataset, Sampler, BatchSampler, DataLoader
 from transformers import Wav2Vec2FeatureExtractor
@@ -56,7 +57,7 @@ def collate_hf(inputs, feature_extractor):
         padding=True,
         return_attention_mask=True
     )
-    # batch["indices"] = [inp["idx"] for inp in inputs]
+    batch["indices"] = [inp["idx"] for inp in inputs]
     return batch
 
 
@@ -136,8 +137,20 @@ def load_vctk(path, split="train"):
     return dataset
 
 
+def get_valid_indices(dataset):
+    ix = []
+    for i in tqdm(range(len(dataset))):
+        try:
+            _ = dataset[i]
+        except sf.LibsndfileError:
+            continue
+        ix.append(i)
+    return ix
+
+
+
 # todo: abstract this out for HF datasets
-def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0, n_examples=0):
+def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0, n_examples=0, validate_examples=False):
 
     feature_extractor = Wav2Vec2FeatureExtractor()
     if dataset_type == "tsv":
@@ -153,7 +166,7 @@ def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, datas
             pin_memory=True,
             # drop_last=False
         )
-        return loader, n_batches
+        return loader, n_batches, len(dataset)
     else:
         # huggingface dataset. How about the dataset_type is "commonvoice", "spgi",
         # or "gigaspeech"?
@@ -171,6 +184,23 @@ def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, datas
             examples_to_take = min(len(dataset), n_examples)
             dataset = dataset.take(examples_to_take)
 
+        # add an indices column, I guess
+        dataset = dataset.add_column(name="idx", column=list(range(len(dataset))))
+
+        length_before_validating = len(dataset)
+
+        # here: optionally validate based on soundfile errors
+        if validate_examples:
+            valid_indices = get_valid_indices(dataset)
+            dataset = dataset.select(valid_indices)
+
+            '''
+            for bad_i in bad_indices:
+                dataset = dataset.take(bad_i)
+            '''
+        print("Dataset lengths:")
+        print("Raw: {}\tAfter validating: {}".format(length_before_validating, len(dataset)))
+
         loader = DataLoader(
             dataset,
             num_workers=num_workers,
@@ -179,5 +209,5 @@ def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, datas
             drop_last=False,
             collate_fn=partial(collate_hf, feature_extractor=feature_extractor)
         )
-        # does it *have* a length?
-        return loader, len(loader)
+
+        return loader, len(loader), length_before_validating

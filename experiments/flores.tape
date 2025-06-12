@@ -168,6 +168,14 @@ plan EvaluateZeroShot {
     reach ComputeFloresComet, ComputeFloresSPBleu via (NShots: zero) * (LanguagePair: *) * (Text2TextModel: tower_instruct spire_full spire_no_blocks spire_no_pseudo tower_full)
 }
 
+plan TranslateZeroShotAll {
+    reach TranslateFlores via (NShots: zero) * (LanguagePair: *) * (Text2TextModel: *)
+}
+
+plan EvaluateZeroShotAll {
+    reach ComputeFloresComet, ComputeFloresSPBleu via (NShots: zero) * (LanguagePair: *) * (Text2TextModel: *)
+}
+
 ##### Seamless Translation #####
 
 plan TranslateFloresSeamless {
