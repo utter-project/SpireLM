@@ -148,41 +148,6 @@ task LabelAudioDupe
         --no-dedup
 }
 
-task LabelAudioLegacy
-    < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
-    > dsus=dsu.txt
-    :: hubert_model=@
-    :: hubert_layer=@
-    :: km_model=@
-    :: repo=@
-{
-    # This task is for generating labels based on fairseq-based audio normalization,
-    # which produces slightly different results than HF's Wav2Vec2FeatureExtractor
-    python $repo/scripts/label-audio.py \
-        --tsv_path $wav_tsv \
-        --out_path $dsus \
-        --ckpt_path $hubert_model \
-        --layer $hubert_layer \
-        --km_path $km_model \
-        --legacy-audio
-}
-
-task LabelAudioNew
-    < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
-    > dsus=dsu.txt
-    :: hubert_model=@
-    :: hubert_layer=@
-    :: km_model=@
-    :: repo=@
-{
-    python $repo/scripts/label-audio.py \
-        --tsv_path $wav_tsv \
-        --out_path $dsus \
-        --ckpt_path facebook/hubert-large-ll60k \
-        --layer $hubert_layer \
-        --km_path $km_model
-}
-
 task BuildInstructions
     < test_dsus=$dsus@LabelAudio
     > instructions=instructions.json
@@ -315,6 +280,10 @@ plan VCTKInstructions {
 
 plan DecodeVCTKSpireFull {
     reach DecodeVCTK via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full)
+}
+
+plan DecodeVCTK {
+    reach DecodeVCTK via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *)
 }
 
 ##### Data Preparation #####

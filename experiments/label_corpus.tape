@@ -8,6 +8,7 @@ task LabelCorpus
     :: dataset_type=@
     :: shard_number=@
     :: shard_size=@
+    :: batch_size=(BatchSize: 4 1)
     :: repo=@
 {
     start_ix=$(( ($shard_number - 1) * $shard_size))
@@ -15,7 +16,7 @@ task LabelCorpus
         --tsv_path $dataset_path \
         --dataset-type $dataset_type \
         --out_path $dsus \
-        --batch-size 4 \
+        --batch-size $batch_size \
         --num-workers 0 \
         --ckpt_path $hubert_model \
         --layer $hubert_layer \
@@ -43,8 +44,24 @@ plan DeduplicateAll {
     reach Deduplicate via (ShardNumber: *)
 }
 
+plan DeduplicateBaselineB1 {
+    reach Deduplicate via (ShardNumber: 1) * (BatchSize: 1)
+}
+
+plan Deduplicate2 {
+    reach Deduplicate via (ShardNumber: 2)
+}
+
 plan LabelFullPrecisionBaseline {
     reach LabelCorpus via (ShardNumber: 1)
+}
+
+plan LabelFullPrecisionBaselineB1 {
+    reach LabelCorpus via (ShardNumber: 1) * (BatchSize: 1)
+}
+
+plan LabelFullPrecision2 {
+    reach LabelCorpus via (ShardNumber: 2)
 }
 
 plan LabelFullPrecision11 {

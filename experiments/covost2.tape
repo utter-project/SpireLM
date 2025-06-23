@@ -55,6 +55,8 @@ task LabelAudio
         --dtype $hubert_dtype
 }
 
+##### Direct ST tasks #####
+
 task BuildDirectInstructions
     < test_dsus=$dsus@LabelAudio
     > instructions=instructions.json
@@ -119,26 +121,161 @@ task BleuDirect
     sacrebleu --metrics bleu chrf --tokenize=flores200 $references < $hyps > $bleu
 }
 
+##### ASR and cascaded ST tasks #####
+
+task BuildASRInstructions
+    < test_dsus=$dsus@LabelAudio
+    > instructions=instructions.json
+    :: speech2text_tokenizer=@
+    :: repo=@
+{
+    # template, language pair, number of shots
+    python $repo/scripts/build_instructions.py \
+        --src $test_dsus \
+        --template asr_simple \
+        --n-shots 0 \
+        --chat-tokenizer $speech2text_tokenizer \
+        --out $instructions
+}
+
+task Transcribe
+    < instructions=@BuildASRInstructions
+    > hyps=hyps.txt
+    :: speech2text_model=@
+    :: speech2text_tokenizer=@
+    :: max_tokens=@
+    :: backend=@
+    :: repo=@
+{
+    python $repo/scripts/inference.py \
+        --inpaths $instructions \
+        --outpaths $hyps \
+        --model $speech2text_model \
+        --tokenizer $speech2text_tokenizer \
+        --backend $backend \
+        --max-length $max_tokens
+}
+
+# since it's a self-cascade, we'll just use the speech2text tokenizer
+task BuildSelfCascadedInstructions
+    < transcriptions=$hyps@Transcribe
+    > instructions=instructions.json
+    :: src_name=@
+    :: tgt_name=@
+    :: speech2text_tokenizer=@
+    :: repo=@
+{
+    # template, language pair, number of shots
+    python $repo/scripts/build_instructions.py \
+        --src $transcriptions \
+        --template mt_zero \
+        --n-shots 0 \
+        --src-lang $src_name \
+        --tgt-lang $tgt_name \
+        --chat-tokenizer $speech2text_tokenizer \
+        --out $instructions
+}
+
+task DecodeCascaded
+    < instructions=@BuildSelfCascadedInstructions
+    > hyps=hyps.txt
+    :: speech2text_model=@
+    :: speech2text_tokenizer=@
+    :: max_tokens=@
+    :: repo=@
+{
+
+    python $repo/scripts/inference.py \
+        --inpaths $instructions \
+        --outpaths $hyps \
+        --model $speech2text_model \
+        --tokenizer $speech2text_tokenizer \
+        --max-length $max_tokens
+
+}
+
+task CometCascaded
+    < hyps=@DecodeCascaded
+    < src=$src_text@GetAudioPathsAndCorpus
+    < references=$ref@GetAudioPathsAndCorpus
+    > comet=comet.json
+    > means=comet-means.json
+    :: comet_model=@
+    :: repo=@
+{
+    # compute comet (we can get the other metrics in other tasks?)
+
+    comet-score -s $src -t $hyps -r $references --model $comet_model --to_json $comet
+
+    python $repo/scripts/mean_comet.py --path $comet --mean-results $means
+}
+
+task BleuCascaded
+    < hyps=@DecodeCascaded
+    < references=$ref@GetAudioPathsAndCorpus
+    > bleu=bleu.json
+    :: repo=@
+{
+    sacrebleu --metrics bleu chrf --tokenize=flores200 $references < $hyps > $bleu
+}
+
+task NormalizeHyps
+    < hyps=@Transcribe
+    > hyps_normalized=hyps.txt.norm
+    :: normalizer=@
+    :: repo=@
+{
+    python $repo/scripts/normalize.py --normalizer $normalizer < $hyps > $hyps_normalized
+}
+
+task NormalizeRefs
+    < references=$src_text@GetAudioPathsAndCorpus
+    > refs_normalized=refs.txt.norm
+    :: normalizer=@
+    :: repo=@
+{
+    python $repo/scripts/normalize.py --normalizer $normalizer < $references > $refs_normalized
+}
+
+task ComputeWER
+    < hyps_normalized=@NormalizeHyps
+    < refs_normalized=@NormalizeRefs
+    > results=wer.json
+    :: repo=@
+{
+    python $repo/scripts/compute_wer.py --hyp $hyps_normalized --ref $refs_normalized > $results
+}
+
 ##### Tokenize CoVoST2 #####
 
 plan Labelize {
     reach LabelAudio via (LanguagePair: en_de en_zh)
 }
 
-##### Prep data #####
+##### Direct ST plans #####
 
 plan DirectInstructions {
     reach BuildDirectInstructions via (Speech2TextModel: *) * (LanguagePair: en_de en_zh)
 }
 
-##### Inference #####
-
 plan DirectTranslation {
     reach DecodeDirect via (Speech2TextModel: *) * (LanguagePair: en_de en_zh)
 }
 
-##### Evaluation #####
-
 plan Evaluation {
     reach CometDirect, BleuDirect via (Speech2TextModel: *) * (LanguagePair: en_de en_zh)
+}
+
+##### Cascaded ST and ASR plans #####
+
+plan TranscriptionInstructions {
+    reach BuildASRInstructions via (Speech2TextModel: *) * (LanguagePair: en_de en_zh)
+}
+
+plan ASR {
+    reach Transcribe via (Speech2TextModel: *) * (LanguagePair: en_de en_zh)
+}
+
+plan CascadedEvaluation {
+    reach CometCascaded, BleuCascaded via (Speech2TextModel: *) * (LanguagePair: en_de en_zh)
 }

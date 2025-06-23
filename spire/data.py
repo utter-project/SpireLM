@@ -137,6 +137,11 @@ def load_vctk(path, split="train"):
     return dataset
 
 
+def load_voxpopuli(path, lang="en", split="train"):
+    dataset = load_from_disk(join(path, lang))[split]
+    return dataset
+
+
 def get_valid_indices(dataset):
     ix = []
     for i in tqdm(range(len(dataset))):
@@ -176,8 +181,10 @@ def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, datas
             dataset = load_spgi(path)
         elif dataset_type == "gigaspeech":
             dataset = load_gigaspeech(path)
-        else:
+        elif dataset_type == "vctk":
             dataset = load_vctk(path)
+        else:
+            dataset = load_voxpopuli(path)
 
         dataset = dataset.skip(start_ix)
         if n_examples > 0:
