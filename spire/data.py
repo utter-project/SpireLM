@@ -106,39 +106,25 @@ class TokenBatchSampler(BatchSampler):
         raise TypeError("The number of batches in a token-batched epoch is not known in advance")
 
 
-def load_commonvoice(path, lang="en", split="train"):
-    dataset = load_from_disk(join(path, lang))[split]
-    dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
-    return dataset
+def load_hf_audio_dataset(path, path_extra=None, split="train", resample_to=None, from_disk=True):
+    if from_disk:
+        # currently supporting commonvoice, gigaspeech, spgi, voxpopuli
 
+        # lang or size...maybe should be path_extra
+        if path_extra is not None:
+            path = join(path, path_extra)
+        dataset = load_from_disk(path)[split]
+    else:
+        # currently just VCTK
+        if path_extra is not None:
+            dataset = load_dataset(path, path_extra, split=split)
+        else:
+            dataset = load_dataset(path, split=split)
 
-def load_gigaspeech(path, size="xl", split="train"):
+    # commonvoice and VCTK need this
+    if resample_to is not None:
+        dataset = dataset.cast_column("audio", Audio(sampling_rate=resample_to))
 
-    dataset = load_from_disk(join(path, size))[split]
-    # disable_caching()
-    # dataset = dataset.map(truecase_and_fix_punct)
-    return dataset
-
-
-def load_spgi(path, split="train"):
-    """
-    Identical to the commonvoice one besides the path parsing
-    """
-    dataset = load_from_disk(path)[split]
-    return dataset
-
-
-def load_vctk(path, split="train"):
-    """
-    Identical to the commonvoice one besides the path parsing
-    """
-    dataset = load_dataset(path, split=split)
-    dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
-    return dataset
-
-
-def load_voxpopuli(path, lang="en", split="train"):
-    dataset = load_from_disk(join(path, lang))[split]
     return dataset
 
 
@@ -153,9 +139,11 @@ def get_valid_indices(dataset):
     return ix
 
 
-
-# todo: abstract this out for HF datasets
-def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0, n_examples=0, validate_examples=False):
+def build_dataloader(
+        path, sample_rate=16000, num_workers=0,
+        batch_size=1, dataset_type="tsv", start_ix=0, n_examples=0,
+        validate_examples=False, path_extra="en", hf_location="disk",
+        hf_split="test", resample_to=None):
 
     feature_extractor = Wav2Vec2FeatureExtractor()
     if dataset_type == "tsv":
@@ -173,18 +161,11 @@ def build_dataloader(path, sample_rate=16000, num_workers=0, batch_size=1, datas
         )
         return loader, n_batches, len(dataset)
     else:
-        # huggingface dataset. How about the dataset_type is "commonvoice", "spgi",
-        # or "gigaspeech"?
-        if dataset_type == "commonvoice":
-            dataset = load_commonvoice(path, split="train")
-        elif dataset_type == "spgi":
-            dataset = load_spgi(path)
-        elif dataset_type == "gigaspeech":
-            dataset = load_gigaspeech(path)
-        elif dataset_type == "vctk":
-            dataset = load_vctk(path)
-        else:
-            dataset = load_voxpopuli(path)
+        # huggingface dataset.
+        dataset = load_hf_audio_dataset(
+            path, path_extra=path_extra, resample_to=resample_to,
+            split=hf_split, from_disk=dataset_type == "hf-disk"
+        )
 
         dataset = dataset.skip(start_ix)
         if n_examples > 0:

@@ -23,13 +23,6 @@ def main(args):
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
 
-    # should deduplicated be an instance attribute or a labeling parameter?
-    """
-    labeler = Labeler(
-        args.ckpt_path, args.km_path, feature_layer=args.layer,
-        deduplicated=not args.no_dedup, dtype=dtype
-    )
-    """
     labeler = HubertLabeler(
         args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype
     )
@@ -47,7 +40,10 @@ def main(args):
         dataset_type=args.dataset_type,
         start_ix=args.start_ix,
         n_examples=args.n_examples,
-        validate_examples=args.validate_examples
+        validate_examples=args.validate_examples,
+        path_extra=args.path_extra,
+        hf_split=args.hf_split,
+        resample_to=args.resample_to
     )
 
     with open(args.out_path, "w") as f:
@@ -57,7 +53,6 @@ def main(args):
             for batch in tqdm(loader, total=n_batches):
                 inp = batch.input_values.to(dtype=dtype, device="cuda")
                 mask = batch.attention_mask.cuda()
-                # batch_labels = labeler.label(batch=inp, indices_only=args.as_indices, attention_mask=mask)
                 batch_labels = labeler.predict(batch=inp, attention_mask=mask)
                 detokenized_labels = detokenize(
                     batch_labels,
@@ -68,12 +63,6 @@ def main(args):
                 labels.extend(detokenized_labels)
                 indices.extend(batch.indices)
 
-                '''
-                if args.dataset_type != "tsv":
-                    for p in pred2str(detokenized_labels):
-                        f.write(p + "\n")
-                '''
-
         idx2labels = dict(zip(indices, labels))
         for i in range(raw_length):
             if i not in idx2labels:
@@ -82,13 +71,6 @@ def main(args):
                 continue
             label_string = pred2str_single(idx2labels[i])
             f.write(label_string + "\n")
-
-        '''
-        if args.dataset_type == "tsv":
-            predictions = pred2str([label for i, label in sorted(zip(indices, labels))])
-            for pred in predictions:
-                f.write(pred + "\n")
-        '''
 
 
 if __name__ == "__main__":
@@ -105,7 +87,10 @@ if __name__ == "__main__":
     parser.add_argument("--num-workers", type=int, default=1)
     parser.add_argument("--dtype", default="fp32", choices=["fp32", "bf16"])
     parser.add_argument("--compile", action="store_true")
-    parser.add_argument("--dataset-type", default="tsv", choices=["tsv", "commonvoice", "spgi", "gigaspeech", "vctk"])
+    parser.add_argument("--dataset-type", default="tsv", choices=["tsv", "hf-disk", "hf-cache"])
+    parser.add_argument("--path-extra", help="Set 'xl' for gigaspeech, or 'en' for English sections of multilingual corpora")
+    parser.add_argument("--hf-split", default="test")
+    parser.add_argument("--resample-to", type=int, default=None)
     parser.add_argument("--start-ix", type=int, default=0, help="For slicing an HF dataset (start index in the corpus)")
     parser.add_argument("--n-examples", type=int, default=0, help="For slicing an HF dataset (number of examples to take, starting with start-ix)")
     parser.add_argument("--validate-examples", action="store_true")
