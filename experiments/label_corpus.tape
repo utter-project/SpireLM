@@ -6,6 +6,7 @@ task LabelCorpus
     :: hubert_dtype=@
     :: dataset_path=@
     :: dataset_type=@
+    :: path_extra=@
     :: shard_number=@
     :: shard_size=@
     :: batch_size=(BatchSize: 4 1)
@@ -25,6 +26,10 @@ task LabelCorpus
         --start-ix $start_ix \
         --n-examples $shard_size \
         --validate-examples \
+        --hf-split train \
+        --resample-to 16000 \
+        --path-extra $path_extra \
+        --dataset-type $dataset_type \
         --no-dedup
 }
 

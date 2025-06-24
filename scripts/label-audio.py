@@ -88,7 +88,7 @@ if __name__ == "__main__":
     parser.add_argument("--dtype", default="fp32", choices=["fp32", "bf16"])
     parser.add_argument("--compile", action="store_true")
     parser.add_argument("--dataset-type", default="tsv", choices=["tsv", "hf-disk", "hf-cache"])
-    parser.add_argument("--path-extra", help="Set 'xl' for gigaspeech, or 'en' for English sections of multilingual corpora")
+    parser.add_argument("--path-extra", default="", help="Set 'xl' for gigaspeech, or 'en' for English sections of multilingual corpora")
     parser.add_argument("--hf-split", default="test")
     parser.add_argument("--resample-to", type=int, default=None)
     parser.add_argument("--start-ix", type=int, default=0, help="For slicing an HF dataset (start index in the corpus)")

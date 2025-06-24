@@ -106,17 +106,17 @@ class TokenBatchSampler(BatchSampler):
         raise TypeError("The number of batches in a token-batched epoch is not known in advance")
 
 
-def load_hf_audio_dataset(path, path_extra=None, split="train", resample_to=None, from_disk=True):
+def load_hf_audio_dataset(path, path_extra="", split="train", resample_to=None, from_disk=True):
     if from_disk:
         # currently supporting commonvoice, gigaspeech, spgi, voxpopuli
 
         # lang or size...maybe should be path_extra
-        if path_extra is not None:
+        if path_extra:
             path = join(path, path_extra)
         dataset = load_from_disk(path)[split]
     else:
         # currently just VCTK
-        if path_extra is not None:
+        if path_extra:
             dataset = load_dataset(path, path_extra, split=split)
         else:
             dataset = load_dataset(path, split=split)
