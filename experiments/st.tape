@@ -24,6 +24,7 @@ task ConvertTSV
     python $repo/scripts/convert_tsv.py --input-tsv $native_tsv --output-tsv $wav_tsv --output-dir $wav
 }
 
+# will need to rewrite this one, I think
 task DumpSTGoldTranscriptions
     > gold=gold.txt
     > metadata=metadata.json
@@ -62,22 +63,31 @@ task RecoverReferencesFleurs
         --fleurs-src $gold_src --fleurs-tgt-inferred $references
 }
 
+# the tsv is not needed, so what do we do?
 task LabelAudio
-    < wav_tsv=(STDataset: fleurs=$tsv@BuildNativeTSV)
     > dsus=dsu.txt
     :: hubert_model=@
     :: hubert_layer=@
     :: km_model=@
     :: hubert_dtype=@
+    :: dataset_path=@
+    :: path_extra=@
     :: repo=@
 {
+    # dataset_path should be defined in the uservars file
+    # dataset_dype should be hf-disk
+    # resample-to should not be necessary
+    # batch-size should be 4 (since it isn't token-batching anymore)
     python $repo/scripts/label-audio.py \
-        --tsv_path $wav_tsv \
+        --tsv_path $dataset_path \
+        --dataset-type "hf-disk" \
+        --path-extra $path_extra \
+        --hf-split test \
         --out_path $dsus \
         --ckpt_path $hubert_model \
         --layer $hubert_layer \
         --km_path $km_model \
-        --batch-size 1000000 \
+        --batch-size 4 \
         --dtype $hubert_dtype
 }
 
