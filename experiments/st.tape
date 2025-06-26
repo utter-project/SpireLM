@@ -1,30 +1,3 @@
-task BuildNativeTSV
-    :: st_dataset=@
-    :: st_path_extra=@
-    :: st_split=@
-    :: repo=@
-    > tsv=audio.tsv
-{
-    # build a tsv file for an ASR dataset
-    python $repo/scripts/build_tsv.py --path $st_dataset --path-extra $st_path_extra --split $st_split --out $tsv
-}
-
-task ConvertTSV
-    < native_tsv=$tsv@BuildNativeTSV
-    > wav_tsv=audio.tsv
-    > wav
-    :: hubert_model=@
-    :: hubert_layer=@
-    :: repo=@
-{
-    mkdir -p $wav
-    # convert data to wav for audio datasets in other formats (for ASR testing,
-    # this should only be LibriSpeech so far)
-
-    python $repo/scripts/convert_tsv.py --input-tsv $native_tsv --output-tsv $wav_tsv --output-dir $wav
-}
-
-# will need to rewrite this one, I think
 task DumpSTGoldTranscriptions
     > gold=gold.txt
     > metadata=metadata.json
@@ -70,7 +43,7 @@ task LabelAudio
     :: hubert_layer=@
     :: km_model=@
     :: hubert_dtype=@
-    :: dataset_path=@
+    :: st_dataset=@
     :: path_extra=@
     :: repo=@
 {
@@ -79,7 +52,7 @@ task LabelAudio
     # resample-to should not be necessary
     # batch-size should be 4 (since it isn't token-batching anymore)
     python $repo/scripts/label-audio.py \
-        --tsv_path $dataset_path \
+        --tsv_path $st_dataset \
         --dataset-type "hf-disk" \
         --path-extra $path_extra \
         --hf-split test \
