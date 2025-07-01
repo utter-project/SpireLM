@@ -1,3 +1,4 @@
+# the BuildNativeTSV and ConvertTSV tasks will become obsolete, I think
 task BuildNativeTSV
     :: asr_dataset=@
     :: asr_path_extra=@
@@ -24,6 +25,7 @@ task ConvertTSV
     python $repo/scripts/convert_tsv.py --input-tsv $native_tsv --output-tsv $wav_tsv --output-dir $wav
 }
 
+# this one stays as is
 task LabelVCTK
     > dsus=dsus_no_dedup.txt
     :: hubert_model=@
@@ -44,6 +46,7 @@ task LabelVCTK
         --no-dedup
 }
 
+# this one stays as is
 task LabelCommonvoice
     > dsus=dsus_no_dedup.txt
     :: hubert_model=@
@@ -110,6 +113,34 @@ task DecodeVCTK
 }
 
 task LabelAudio
+    > dsus=dsu.txt
+    :: hubert_model=@
+    :: hubert_layer=@
+    :: km_model=@
+    :: hubert_dtype=@
+    :: asr_dataset=@
+    :: asr_path_extra=@
+    :: repo=@
+{
+    # dataset_path should be defined in the uservars file
+    # dataset_dype should be hf-disk
+    # resample-to should not be necessary
+    # batch-size should be 4 (since it isn't token-batching anymore)
+    python $repo/scripts/label-audio.py \
+        --tsv_path $asr_dataset \
+        --dataset-type "hf-disk" \
+        --path-extra $asr_path_extra \
+        --hf-split test \
+        --out_path $dsus \
+        --ckpt_path $hubert_model \
+        --layer $hubert_layer \
+        --km_path $km_model \
+        --batch-size 4 \
+        --dtype $hubert_dtype
+}
+
+# obsolete, but not deleting just yet
+task LabelAudioFromTSV
     < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
     > dsus=dsu.txt
     :: hubert_model=@

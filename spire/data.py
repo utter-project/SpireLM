@@ -110,8 +110,16 @@ def load_hf_audio_dataset(path, path_extra="", split="train", resample_to=None, 
     if from_disk:
         # currently supporting commonvoice, gigaspeech, spgi, voxpopuli
 
+        # problem with this is the assumption of path_extra and such doesn't work
+        # with librispeech
+        # so either we use weird split names, or do some librispeech-specific stuff
+
         # lang or size...maybe should be path_extra
-        if path_extra:
+
+        if "openslr/librispeech_asr" in path:
+            assert path_extra
+            split = split + "." + path_extra
+        elif path_extra:
             path = join(path, path_extra)
         dataset = load_from_disk(path)[split]
     else:

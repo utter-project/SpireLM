@@ -233,7 +233,7 @@ task BleuCascaded
 ##### Tokenize audio for ST experiments #####
 
 plan Labelize {
-    reach LabelAudio via (STDataset: *)
+    reach LabelAudio
 }
 
 ##### Prep data #####
