@@ -11,7 +11,7 @@ def main(args):
 
     # add from_disk)
     dataset = load_hf_audio_dataset(
-        args.path, path_extra=args.path_extra, split=args.split, from_disk=
+        args.path, path_extra=args.path_extra, split=args.split, from_disk=args.dataset_type=="hf-disk"
     ).remove_columns("audio")
 
     text = dataset[args.text_field]
@@ -21,7 +21,7 @@ def main(args):
 
     metadata = []
     for example_dict in dataset:
-        del example_dict["audio"]
+        # del example_dict["audio"]
         metadata.append(example_dict)
     with open(args.metadata, "w") as metadata_f:
         json.dump(metadata, metadata_f, indent=4, ensure_ascii=False)

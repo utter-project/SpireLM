@@ -9,7 +9,7 @@ task DumpSTGoldTranscriptions
 {
     python $repo/scripts/extract_asr_text.py \
         --path $st_dataset --path-extra $st_path_extra --split $st_split --text-field $st_text_field \
-        --corpus $gold --metadata $metadata
+        --dataset-type hf-disk --corpus $gold --metadata $metadata
 }
 
 task FetchFlores
