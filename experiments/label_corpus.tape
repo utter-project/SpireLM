@@ -9,6 +9,7 @@ task LabelCorpus
     :: path_extra=@
     :: shard_number=@
     :: shard_size=@
+    :: hf_split=@
     :: batch_size=(BatchSize: 4 1)
     :: repo=@
 {
@@ -26,7 +27,7 @@ task LabelCorpus
         --start-ix $start_ix \
         --n-examples $shard_size \
         --validate-examples \
-        --hf-split train \
+        --hf-split $hf_split \
         --resample-to 16000 \
         --path-extra $path_extra \
         --dataset-type $dataset_type \
