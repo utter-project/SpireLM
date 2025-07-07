@@ -269,7 +269,7 @@ task DumpASRText
 {
     python $repo/scripts/extract_asr_text.py \
         --path $asr_dataset --path-extra $asr_path_extra --split $asr_split --text-field $asr_text_field \
-        --corpus $references --metadata $metadata
+        --dataset-type hf-disk --corpus $references --metadata $metadata
 }
 
 task NormalizeHyps
