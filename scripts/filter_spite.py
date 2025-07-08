@@ -1,5 +1,7 @@
 import json
 import argparse
+import random
+
 from tqdm import tqdm
 
 
@@ -78,11 +80,17 @@ def filter_by_threshold(mt_corpus, speech_corpus, threshold):
 
 
 def main(args):
+    random.seed(a=args.seed)
     human_template = "Speech: {example}\n{tgt_lang}:"
 
     examples = filter_by_threshold(args.mt_corpus, args.speech_corpus, args.threshold)
-    if args.kbest > 0:
-        examples = sorted(examples, key=lambda ex: ex["ex_dict"]["COMET"], reverse=True)[:args.kbest]
+    if args.n_examples > 0:
+        if args.subsampling == "topk":
+            examples = sorted(examples, key=lambda ex: ex["ex_dict"]["COMET"], reverse=True)[:args.n_examples]
+        else:
+            examples = list(examples)
+            random.shuffle(examples)
+            examples = examples[:args.n_examples]
 
     with open(args.filtered_mt_corpus, "w") as out_f, open(args.metadata, "w") as metadata_f:
         for ex in examples:
@@ -100,8 +108,10 @@ if __name__ == "__main__":
     parser.add_argument("--metadata")
     parser.add_argument("--speech-corpus")
     parser.add_argument("--threshold", type=float, default=0.85)
-    parser.add_argument("--kbest", type=int, default=0)
+    parser.add_argument("--n-examples", type=int, default=0)
+    parser.add_argument("--subsampling", choices=["random", "topk"])
     parser.add_argument("--models", default=None)
     parser.add_argument("--tgt")
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
     main(args)
