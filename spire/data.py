@@ -10,13 +10,22 @@ from datasets import load_from_disk, load_dataset, Audio
 
 class AudioTSVDataset(Dataset):
 
-    def __init__(self, tsv_path, sample_rate=16000):
-        with open(tsv_path) as f:
-            root = f.readline().rstrip()
-            lines = [line.rstrip().split("\t") for line in f]
-        self.data = [(join(root, wav), int(n_samples)) for (wav, n_samples) in lines]
+    def __init__(self, tsv_path=None, examples=None, sample_rate=16000):
+        assert (tsv_path is not None) != (examples is not None)
+        if tsv_path is not None:
+            with open(tsv_path) as f:
+                root = f.readline().rstrip()
+                lines = [line.rstrip().split("\t") for line in f]
+            self.data = [(join(root, wav), int(n_samples)) for (wav, n_samples) in lines]
+        else:
+            self.data = examples
         # self.data = sorted(self.data, key=lambda x: x[1], reverse=True)
         self.sample_rate = sample_rate
+
+    def select(self, indices):
+        # return a new dataset containing the relevant indices from self
+        selected = [self.data[i] for i in indices]
+        return AudioTSVDataset(examples=selected, sample_rate=self.sample_rate)
 
     def __len__(self):
         return len(self.data)
@@ -147,6 +156,16 @@ def get_valid_indices(dataset):
     return ix
 
 
+def get_valid_indices_tsv(dataset):
+    ix = []
+    for i in tqdm(range(len(dataset))):
+        ex = dataset[i]
+        if ex["n_samples"] == 0:
+            continue
+        ix.append(i)
+    return ix
+
+
 def build_dataloader(
         path, sample_rate=16000, num_workers=0,
         batch_size=1, dataset_type="tsv", start_ix=0, n_examples=0,
@@ -155,7 +174,14 @@ def build_dataloader(
 
     feature_extractor = Wav2Vec2FeatureExtractor()
     if dataset_type == "tsv":
-        dataset = AudioTSVDataset(path, sample_rate=sample_rate)
+        dataset = AudioTSVDataset(tsv_path=path, sample_rate=sample_rate)
+        length_before_validating = len(dataset)
+        if validate_examples:
+            valid_indices = get_valid_indices_tsv(dataset)
+            dataset = dataset.select(valid_indices)
+        print("Dataset lengths:")
+        print("Raw: {}\tAfter validating: {}".format(length_before_validating, len(dataset)))
+
         sampler = LengthSortedAudioSampler(dataset)
         batch_sampler = TokenBatchSampler(dataset, sampler, batch_size)
         n_batches = len([b for b in batch_sampler])
@@ -167,7 +193,7 @@ def build_dataloader(
             pin_memory=True,
             # drop_last=False
         )
-        return loader, n_batches, len(dataset)
+        return loader, n_batches, length_before_validating
     else:
         # huggingface dataset.
         dataset = load_hf_audio_dataset(

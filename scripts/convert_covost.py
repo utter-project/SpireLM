@@ -4,6 +4,7 @@ import os
 from os.path import basename, join, splitext
 from tqdm import tqdm
 import torchaudio
+import soundfile as sf
 
 
 def main(args):
@@ -17,7 +18,10 @@ def main(args):
         for mp3_file in tqdm(mp3_files):
             wav_path = join(args.output_dir, splitext(basename(mp3_file))[0] + ".wav")
             subprocess.run(["ffmpeg", "-i", mp3_file, "-ar", "16000", wav_path])
-            length = torchaudio.load(wav_path)[0].shape[1]
+            try:
+                length = torchaudio.load(wav_path)[0].shape[1]
+            except sf.LibsndfileError:
+                length = 0
             f.write("\t".join([wav_path, str(length)]) + "\n")
 
 
