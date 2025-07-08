@@ -1,0 +1,107 @@
+import json
+import argparse
+from tqdm import tqdm
+
+
+"""
+Input looks like this:
+{"src": "It is claimed that government officials had little time to react.",
+ "mt": {"tower_instruct_mistral": {"mt": "Es wird behauptet, dass Regierungsbeamte wenig Zeit hatten, zu reagieren.", "COMET": 0.88427734375},
+        "euro_9B_instruct": {"mt": "Es wird behauptet, dass Regierungsbeamte wenig Zeit hatten, um zu reagieren.", "COMET": 0.884765625}}
+}
+"""
+
+"""
+Output looks like this:
+{"conversations": [{"from": "human", "value": "Speech: 󰿯\nSpanish:"}, {"from": "gpt", "value": "Y él desconocía por completo que lo vigilaban tanto en su tiempo de trabajo como en su tiempo libre."}]}
+"""
+
+
+def select_mt(ex_dict, models=None):
+    allowed_models = models if models is not None else ex_dict["mt"]
+    chosen_model = max(allowed_models, key=lambda m: ex_dict["mt"][m]["COMET"])
+    return chosen_model
+
+
+def make_instruction(dsu_seq, translation, tgt_lang, speech_turn="Speech: {example}\n{tgt_lang}:"):
+    out_dict = {
+        "conversations": [{"from": "human", "value": speech_turn.format(example=dsu_seq, tgt_lang=tgt_lang)},
+                          {"from": "gpt", "value": translation}]
+    }
+    return json.dumps(out_dict, ensure_ascii=False)
+
+
+def make_chosen_ex_dict(ex_dict, chosen_model):
+    out_ex_dict = dict()
+    for k, v in ex_dict.items():
+        if k != "mt":
+            out_ex_dict[k] = v
+    for k, v in ex_dict["mt"][chosen_model].items():
+        out_ex_dict[k] = v
+
+    best_comet = ex_dict["mt"][chosen_model]["COMET"]
+
+    best_models = []
+    for k, v in ex_dict["mt"].items():
+        # k is a model name, v is the dict containing mt and COMET
+        if v["COMET"] == best_comet:
+            best_models.append(k)
+
+    out_ex_dict["chosen_model"] = best_models
+    # return json.dumps(out_ex_dict, ensure_ascii=False)
+    return out_ex_dict
+
+
+def filter_by_threshold(mt_corpus, speech_corpus, threshold):
+
+    with open(mt_corpus) as mt_inp_f, open(speech_corpus) as sp_inp_f:
+        for mt_line, dsus in tqdm(zip(mt_inp_f, sp_inp_f)):
+            dsus = dsus.strip()
+
+            if not dsus:
+                # ignore empty lines (some corpora contain them)
+                continue
+
+            ex_dict = json.loads(mt_line)
+            selected_model = select_mt(ex_dict)  # todo: option for subset of models
+            selected_ex_dict = make_chosen_ex_dict(ex_dict, selected_model)
+
+            # translation and score
+            mt = selected_ex_dict["mt"]
+            comet = selected_ex_dict["COMET"]
+
+            # absolute threshold
+            if comet < threshold:
+                continue
+
+            yield {"dsu": dsus, "mt": mt, "ex_dict": selected_ex_dict}
+
+
+def main(args):
+    human_template = "Speech: {example}\n{tgt_lang}:"
+
+    examples = filter_by_threshold(args.mt_corpus, args.speech_corpus, args.threshold)
+    if args.kbest > 0:
+        examples = sorted(examples, key=lambda ex: ex["ex_dict"]["COMET"], reverse=True)[:args.kbest]
+
+    with open(args.filtered_mt_corpus, "w") as out_f, open(args.metadata, "w") as metadata_f:
+        for ex in examples:
+            instruction = make_instruction(
+                ex["dsu"], ex["mt"], args.tgt, speech_turn=human_template
+            )
+            out_f.write(instruction + "\n")
+            metadata_f.write(json.dumps(ex["ex_dict"], ensure_ascii=False) + "\n")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mt-corpus")
+    parser.add_argument("--filtered-mt-corpus")
+    parser.add_argument("--metadata")
+    parser.add_argument("--speech-corpus")
+    parser.add_argument("--threshold", type=float, default=0.85)
+    parser.add_argument("--kbest", type=int, default=0)
+    parser.add_argument("--models", default=None)
+    parser.add_argument("--tgt")
+    args = parser.parse_args()
+    main(args)

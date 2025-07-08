@@ -1,0 +1,64 @@
+task JoinDSUs
+    > dsus=dsu.txt
+    :: corpus_dir=@
+    :: shard_count=@
+    :: repo=@
+{
+    python $repo/scripts/join_dsu_files.py --corpus-dir $corpus_dir --shard-end $shard_count --out $dsus
+}
+
+task FilterCorpus
+    < dsus=@JoinDSUs
+    > st_instructions=instructions.jsonl
+    :: threshold=@
+    :: mt_corpus=@
+    :: wmt_src=@
+    :: wmt_tgt=@
+    :: tgt_name=@
+    :: repo=@
+{
+    pair_corpus="${mt_corpus}/${wmt_src}-${wmt_tgt}.jsonl"
+    python $repo/scripts/filter_spite.py \
+        --mt-corpus $pair_corpus \
+        --filtered-mt-corpus $st_instructions \
+        --speech-corpus $dsus \
+        --threshold $threshold \
+        --tgt $tgt_name
+}
+
+task SubsampleCorpus
+    < st_instructions=@FilterCorpus
+    > st_instructions_out=instructions.jsonl
+    :: n_lines=@
+    :: seed=@
+    :: repo=@
+{
+    python $repo/scripts/subsample.py --in-file $st_instructions --out-file $st_instructions_out --n-lines $n_lines --seed $seed
+}
+
+#####
+
+plan JoinDSUFiles {
+    reach JoinDSUs via (Corpus: *)
+}
+
+plan Filter {
+    reach FilterCorpus via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (Threshold: *)
+}
+
+plan Subsample {
+    reach SubsampleCorpus via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 250000)
+}
+
+plan Subsample_86 {
+    reach SubsampleCorpus via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 250000) * (Threshold: 0.86)
+}
+
+plan Subsample_500k {
+    reach SubsampleCorpus via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 500000)
+}
+
+
+plan Subsample_1m {
+    reach SubsampleCorpus via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 1000000)
+}
