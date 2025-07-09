@@ -54,7 +54,7 @@ def make_chosen_ex_dict(ex_dict, chosen_model):
     return out_ex_dict
 
 
-def filter_by_threshold(mt_corpus, speech_corpus, threshold):
+def filter_by_threshold(mt_corpus, speech_corpus, threshold, models=None):
 
     with open(mt_corpus) as mt_inp_f, open(speech_corpus) as sp_inp_f:
         for mt_line, dsus in tqdm(zip(mt_inp_f, sp_inp_f)):
@@ -65,7 +65,7 @@ def filter_by_threshold(mt_corpus, speech_corpus, threshold):
                 continue
 
             ex_dict = json.loads(mt_line)
-            selected_model = select_mt(ex_dict)  # todo: option for subset of models
+            selected_model = select_mt(ex_dict, models=models)
             selected_ex_dict = make_chosen_ex_dict(ex_dict, selected_model)
 
             # translation and score
@@ -83,7 +83,16 @@ def main(args):
     random.seed(a=args.seed)
     human_template = "Speech: {example}\n{tgt_lang}:"
 
-    examples = filter_by_threshold(args.mt_corpus, args.speech_corpus, args.threshold)
+    if args.models is not None:
+        models = args.models.split(",")
+    else:
+        models = None
+
+    examples = filter_by_threshold(
+        args.mt_corpus, args.speech_corpus, args.threshold, models=models
+    )
+
+    # n_examples == 0 -> absolute threshold-based filtering
     if args.n_examples > 0:
         if args.subsampling == "topk":
             examples = sorted(examples, key=lambda ex: ex["ex_dict"]["COMET"], reverse=True)[:args.n_examples]

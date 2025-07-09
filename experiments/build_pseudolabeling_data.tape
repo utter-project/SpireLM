@@ -7,6 +7,38 @@ task JoinDSUs
     python $repo/scripts/join_dsu_files.py --corpus-dir $corpus_dir --shard-end $shard_count --out $dsus
 }
 
+task FilterAndSubsample
+    < dsus=@JoinDSUs
+    > st_instructions=instructions.jsonl
+    > metadata=metadata.jsonl
+    > comet_score=comet-mean.json
+    :: threshold=@
+    :: mt_corpus=@
+    :: wmt_src=@
+    :: wmt_tgt=@
+    :: tgt_name=@
+    :: n_lines=@
+    :: subsampling=@
+    :: models=@
+    :: seed=@
+    :: repo=@
+{
+    pair_corpus="${mt_corpus}/${wmt_src}-${wmt_tgt}.jsonl"
+    python $repo/scripts/filter_spite.py \
+        --mt-corpus $pair_corpus \
+        --filtered-mt-corpus $st_instructions \
+        --metadata $metadata \
+        --speech-corpus $dsus \
+        --threshold $threshold \
+        --tgt $tgt_name \
+        --seed $seed \
+        --n-examples $n_lines \
+        --subsampling $subsampling \
+        --models $models
+
+    python $repo/scripts/mean_comet.py --path $metadata --mean-results $comet_score --jsonl
+}
+
 task FilterCorpus
     < dsus=@JoinDSUs
     > st_instructions=instructions.jsonl
@@ -61,4 +93,13 @@ plan Subsample_500k {
 
 plan Subsample_1m {
     reach SubsampleCorpus via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 1000000)
+}
+
+# I think this should recover the original behavior...
+plan FilterSubsample_500k {
+    reach FilterAndSubsample via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 500000)
+}
+
+plan FilterSubsample_500k_topk {
+    reach FilterAndSubsample via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 500000) * (Subsampling: topk) * (Threshold: 0.0)
 }
