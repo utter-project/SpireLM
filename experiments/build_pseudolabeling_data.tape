@@ -103,3 +103,7 @@ plan FilterSubsample_500k {
 plan FilterSubsample_500k_topk {
     reach FilterAndSubsample via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 500000) * (Subsampling: topk) * (Threshold: 0.0)
 }
+
+plan FilterSubsample_1m {
+    reach FilterAndSubsample via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 1000000)
+}
