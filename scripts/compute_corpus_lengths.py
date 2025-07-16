@@ -1,4 +1,6 @@
 import argparse
+
+from tqdm import tqdm
 import numpy as np
 
 from datasets import disable_caching
@@ -45,10 +47,16 @@ def main(args):
         # audio files
         dataset = dataset.remove_columns("audio")
 
-    disable_caching()
-    dataset = dataset.map(compute_time_func)
+        disable_caching()
+        dataset = dataset.map(compute_time_func)
 
-    times = np.array(dataset["seconds"])
+        times = np.array(dataset["seconds"])
+    else:
+        times_list = []
+        for ex in tqdm(dataset):
+            ex = compute_commonvoice_time(ex)
+            times_list.append(ex["seconds"])
+        times = np.array(times_list)
     np.save(args.out, times)
 
 
