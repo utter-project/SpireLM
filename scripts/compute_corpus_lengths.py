@@ -7,7 +7,7 @@ from spire.data import load_hf_audio_dataset
 
 
 def compute_commonvoice_time(example):
-    example["seconds"] = example["audio"]["array"].shape[0] / example["audio"]["sample_rate"]
+    example["seconds"] = example["audio"]["array"].shape[0] / example["audio"]["sampling_rate"]
     return example
 
 
