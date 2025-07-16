@@ -34,12 +34,27 @@ task LabelCorpus
         --no-dedup
 }
 
+task ComputeLengths
+    :: dataset_path=@
+    :: path_extra=@
+    :: hf_split=@
+    :: repo=@
+    > times=times.npy
+{
+    python $repo/scripts/compute_corpus_lengths.py \
+        --path $dataset_path --path-extra $path_extra --split $hf_split --out $times
+}
+
 task Deduplicate
     < dsus=@LabelCorpus
     > dsus_dedup=dsus.txt
     :: repo=@
 {
     python $repo/scripts/deduplicate.py < $dsus > $dsus_dedup
+}
+
+plan Lengths {
+    reach ComputeLengths
 }
 
 plan LabelFullPrecisionAll {

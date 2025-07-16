@@ -22,17 +22,25 @@ def compute_gigaspeech_time(example):
 
 
 def main(args):
+
+    if "common_voice" in args.path:
+        corpus_name = "commonvoice"
+    elif "spgispeech" in args.path:
+        corpus_name = "spgi"
+    else:
+        corpus_name = "gigaspeech"
+
     compute_time_funcs = {
         "commonvoice": compute_commonvoice_time,
         "spgi": compute_spgi_time,
         "gigaspeech": compute_gigaspeech_time
     }
-    compute_time_func = compute_time_funcs[args.corpus_type]
+    compute_time_func = compute_time_funcs[corpus_name]
 
     dataset = load_hf_audio_dataset(
         args.path, path_extra=args.path_extra, split=args.split
     )
-    if args.corpus_type != "commonvoice":
+    if corpus_name != "commonvoice":
         # For SPGI and Gigaspeech, lengths can be computed without loading the
         # audio files
         dataset = dataset.remove_columns("audio")
@@ -46,7 +54,6 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--corpus-type", choices=["commonvoice", "spgi", "gigaspeech"])
     parser.add_argument("--path")
     parser.add_argument("--path-extra", nargs="?", const="")
     parser.add_argument("--split", default="train")
