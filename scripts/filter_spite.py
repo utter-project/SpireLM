@@ -57,10 +57,10 @@ def make_chosen_ex_dict(ex_dict, chosen_model):
 
 
 # todo: options for multiple thresholds
-def filter_by_threshold(mt_corpus, speech_corpus, threshold, models=None, corpus_lengths=None):
+def filter_by_threshold(mt_corpus, speech_corpus, threshold, models=None, audio_lengths=None):
 
-    if corpus_lengths is not None:
-        audio_lengths = np.load(corpus_lengths)
+    if audio_lengths is not None:
+        audio_lengths = np.load(audio_lengths)
     else:
         audio_lengths = repeat(None)
 
@@ -103,7 +103,7 @@ def main(args):
         args.speech_corpus,
         args.threshold,
         models=models,
-        corpus_lengths=args.corpus_lengths
+        audio_lengths=args.audio_lengths
     )
 
     # n_examples == 0 -> absolute threshold-based filtering
