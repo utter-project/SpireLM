@@ -97,7 +97,11 @@ plan Subsample_1m {
     reach SubsampleCorpus via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 1000000)
 }
 
-# I think this should recover the original behavior...
+# I think these two should recover the original behavior...
+plan FilterSubsample_250k {
+    reach FilterAndSubsample via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 250000)
+}
+
 plan FilterSubsample_500k {
     reach FilterAndSubsample via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 500000)
 }
