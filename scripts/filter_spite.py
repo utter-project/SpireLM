@@ -1,8 +1,10 @@
 import json
 import argparse
 import random
+from itertools import repeat
 
 from tqdm import tqdm
+import numpy as np
 
 
 """
@@ -54,10 +56,16 @@ def make_chosen_ex_dict(ex_dict, chosen_model):
     return out_ex_dict
 
 
-def filter_by_threshold(mt_corpus, speech_corpus, threshold, models=None):
+# todo: options for multiple thresholds
+def filter_by_threshold(mt_corpus, speech_corpus, threshold, models=None, corpus_lengths=None):
+
+    if corpus_lengths is not None:
+        audio_lengths = np.load(corpus_lengths)
+    else:
+        audio_lengths = repeat(None)
 
     with open(mt_corpus) as mt_inp_f, open(speech_corpus) as sp_inp_f:
-        for mt_line, dsus in tqdm(zip(mt_inp_f, sp_inp_f)):
+        for mt_line, dsus, audio_length in tqdm(zip(mt_inp_f, sp_inp_f, audio_lengths)):
             dsus = dsus.strip()
 
             if not dsus:
@@ -67,6 +75,8 @@ def filter_by_threshold(mt_corpus, speech_corpus, threshold, models=None):
             ex_dict = json.loads(mt_line)
             selected_model = select_mt(ex_dict, models=models)
             selected_ex_dict = make_chosen_ex_dict(ex_dict, selected_model)
+            if audio_length is not None:
+                selected_ex_dict["audio_length"] = audio_length
 
             # translation and score
             mt = selected_ex_dict["mt"]
@@ -89,7 +99,11 @@ def main(args):
         models = None
 
     examples = filter_by_threshold(
-        args.mt_corpus, args.speech_corpus, args.threshold, models=models
+        args.mt_corpus,
+        args.speech_corpus,
+        args.threshold,
+        models=models,
+        corpus_lengths=args.corpus_lengths
     )
 
     # n_examples == 0 -> absolute threshold-based filtering
@@ -107,7 +121,8 @@ def main(args):
                 ex["dsu"], ex["mt"], args.tgt, speech_turn=human_template
             )
             out_f.write(instruction + "\n")
-            metadata_f.write(json.dumps(ex["ex_dict"], ensure_ascii=False) + "\n")
+            metadata = ex["ex_dict"]
+            metadata_f.write(json.dumps(metadata, ensure_ascii=False) + "\n")
 
 
 if __name__ == "__main__":
@@ -120,6 +135,7 @@ if __name__ == "__main__":
     parser.add_argument("--n-examples", type=int, default=0)
     parser.add_argument("--subsampling", choices=["random", "topk"])
     parser.add_argument("--models", default=None)
+    parser.add_argument("--audio-lengths")
     parser.add_argument("--tgt")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()

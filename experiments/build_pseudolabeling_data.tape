@@ -20,6 +20,7 @@ task FilterAndSubsample
     :: n_lines=@
     :: subsampling=@
     :: models=@
+    :: audio_lengths=@
     :: seed=@
     :: repo=@
 {
@@ -34,6 +35,7 @@ task FilterAndSubsample
         --seed $seed \
         --n-examples $n_lines \
         --subsampling $subsampling \
+        --audio-lengths $audio_lengths \
         --models $models
 
     python $repo/scripts/mean_comet.py --path $metadata --mean-results $comet_score --jsonl
