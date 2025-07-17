@@ -103,6 +103,10 @@ plan DummyThreshold {
     reach FilterAndSubsample via (Corpus: commonvoice) * (LanguagePair: en_pt) * (NLines: 0) * (Threshold: 0.0)
 }
 
+plan KeepAllAt85 {
+    reach FilterAndSubsample via (Corpus: commonvoice) * (LanguagePair: en_pt) * (NLines: 0) * (Threshold: 0.85)
+}
+
 plan FilterSubsample_250k {
     reach FilterAndSubsample via (Corpus: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (NLines: 250000)
 }
