@@ -5,6 +5,8 @@ from datasets import load_dataset
 from spire.utils import fix_fleurs_path, fix_librispeech_path
 
 """
+DEPRECATED-ish
+
 Input should be sufficient info to load the HF dataset, output is a TSV file with
 paths to the files in native format (i.e. wav for fleurs, flac for librispeech, etc.).
 

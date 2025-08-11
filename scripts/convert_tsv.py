@@ -4,6 +4,11 @@ import os
 from os.path import basename, dirname, join, splitext
 
 
+"""
+DEPRECATED-ish
+"""
+
+
 def convert_path(native_path, output_dir):
     # last three parts of the path matter
     speaker, chapter = native_path.split("/")[-3:-1]
@@ -20,23 +25,24 @@ def main(args):
             native_path, n_samples = line.strip().split("\t")
 
             if args.to_flac:
-                converted_path = join(args.output_dir, splitext(basename(native_path))[0] + ".flac")
+                converted_path = join(
+                    args.output_dir, splitext(basename(native_path))[0] + ".flac"
+                )
             else:
                 converted_path = convert_path(native_path, args.output_dir)
 
             out_f.write("\t".join([converted_path, n_samples]) + "\n")
             os.makedirs(dirname(converted_path), exist_ok=True)
 
-            if args.to_flac:
-                subprocess.run(["ffmpeg", "-i", native_path, converted_path])
-            else:
-                subprocess.run(["ffmpeg", "-i", native_path, "-c:a", "pcm_s24le", converted_path])
+            ffmpeg_args = ["ffmpeg", "-i", native_path]
+            if not args.to_flac:
+                ffmpeg_args.extend(["-c:a", "pcm_s24le"])
+            ffmpeg_args.append(converted_path)
+            subprocess.run(ffmpeg_args)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # parser.add_argument("--dataset", choices=["ls-clean", "ls-other", "voxpopuli", "fleurs"])
-    # parser.add_argument("--path", choices=["google/fleurs", "openslr/librispeech_asr", "facebook/voxpopuli"])
     parser.add_argument("--input-tsv", required=True)
     parser.add_argument("--output-tsv", required=True)
     parser.add_argument("--output-dir")

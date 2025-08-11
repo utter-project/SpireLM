@@ -1,17 +1,15 @@
 import argparse
 import json
-from datasets import load_dataset
 
 from spire.data import load_hf_audio_dataset
 
 
 def main(args):
-    # we don't want this
-    # dataset = load_dataset(args.path, args.path_extra, split=args.split, trust_remote_code=True)
-
-    # add from_disk)
     dataset = load_hf_audio_dataset(
-        args.path, path_extra=args.path_extra, split=args.split, from_disk=args.dataset_type=="hf-disk"
+        args.path,
+        path_extra=args.path_extra,
+        split=args.split,
+        from_disk=args.dataset_type=="hf-disk"
     ).remove_columns("audio")
 
     text = dataset[args.text_field]
@@ -29,8 +27,6 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # parser.add_argument("--dataset", choices=["ls-clean", "ls-other", "voxpopuli", "fleurs"])
-    # parser.add_argument("--path", choices=["google/fleurs", "openslr/librispeech_asr", "facebook/voxpopuli"])
     parser.add_argument("--path", required=True)
     parser.add_argument("--path-extra", default="")  # generally a language or clean/other
     parser.add_argument("--split", default="test")

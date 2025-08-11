@@ -10,14 +10,14 @@ import numpy as np
 """
 Input looks like this:
 {"src": "It is claimed that government officials had little time to react.",
- "mt": {"tower_instruct_mistral": {"mt": "Es wird behauptet, dass Regierungsbeamte wenig Zeit hatten, zu reagieren.", "COMET": 0.88427734375},
-        "euro_9B_instruct": {"mt": "Es wird behauptet, dass Regierungsbeamte wenig Zeit hatten, um zu reagieren.", "COMET": 0.884765625}}
+ "mt": {"tower_instruct_mistral": {"mt": "Es wird...", "COMET": 0.88427734375},
+        "euro_9B_instruct": {"mt": "Es wird...", "COMET": 0.884765625}}
 }
-"""
 
-"""
 Output looks like this:
-{"conversations": [{"from": "human", "value": "Speech: 󰿯\nSpanish:"}, {"from": "gpt", "value": "Y él desconocía por completo que lo vigilaban tanto en su tiempo de trabajo como en su tiempo libre."}]}
+{"conversations":
+    [{"from": "human", "value": "Speech: 󰿯\nSpanish:"},
+     {"from": "gpt", "value": "Y él desconocía..."}]}
 """
 
 
@@ -28,8 +28,9 @@ def select_mt(ex_dict, models=None):
 
 
 def make_instruction(dsu_seq, translation, tgt_lang, speech_turn="Speech: {example}\n{tgt_lang}:"):
+    prompt = speech_turn.format(example=dsu_seq, tgt_lang=tgt_lang)
     out_dict = {
-        "conversations": [{"from": "human", "value": speech_turn.format(example=dsu_seq, tgt_lang=tgt_lang)},
+        "conversations": [{"from": "human", "value": prompt},
                           {"from": "gpt", "value": translation}]
     }
     return json.dumps(out_dict, ensure_ascii=False)
@@ -52,17 +53,13 @@ def make_chosen_ex_dict(ex_dict, chosen_model):
             best_models.append(k)
 
     out_ex_dict["chosen_model"] = best_models
-    # return json.dumps(out_ex_dict, ensure_ascii=False)
     return out_ex_dict
 
 
 # todo: options for multiple thresholds
 def filter_by_threshold(mt_corpus, speech_corpus, threshold, models=None, audio_lengths=None):
 
-    if audio_lengths is not None:
-        audio_lengths = np.load(audio_lengths)
-    else:
-        audio_lengths = repeat(None)
+    audio_lengths = np.load(audio_lengths) if audio_lengths is not None else repeat(None)
 
     with open(mt_corpus) as mt_inp_f, open(speech_corpus) as sp_inp_f:
         for mt_line, dsus, audio_length in tqdm(zip(mt_inp_f, sp_inp_f, audio_lengths)):
@@ -109,7 +106,10 @@ def main(args):
     # n_examples == 0 -> absolute threshold-based filtering
     if args.n_examples > 0:
         if args.subsampling == "topk":
-            examples = sorted(examples, key=lambda ex: ex["ex_dict"]["COMET"], reverse=True)[:args.n_examples]
+            examples = sorted(
+                examples, key=lambda ex: ex["ex_dict"]["COMET"],
+                reverse=True
+            )[:args.n_examples]
         else:
             examples = list(examples)
             random.shuffle(examples)

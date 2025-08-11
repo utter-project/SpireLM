@@ -77,7 +77,6 @@ class STShotSampler(ShotSampler):
 
     def sample_template(self):
         example_src, example_tgt = self.sample()
-        # print(self._template)
         return self.template.format(
             example_src=example_src,
             example_tgt=example_tgt,
@@ -85,15 +84,10 @@ class STShotSampler(ShotSampler):
         )
 
 
-# copied from my inference script -- will require some changes
 def prep_example(example, src_lang, tgt_lang, template, n_shots=0, shot_sampler=None, tokenizer_for_chat=None, gold_transcription=None):
 
     assert n_shots == 0 or shot_sampler is not None
 
-    # instead of prompt_format, we should just directly pass the template
-
-    # template = "Translate the following text from {src_lang} to {tgt_lang}.\n{src_lang}: {example}\n{tgt_lang}:"
-    # template = "{src_lang}: {example}\n{tgt_lang}:"
     template_args = {"example": example}
     if src_lang is not None:
         template_args["src_lang"] = src_lang
@@ -109,15 +103,17 @@ def prep_example(example, src_lang, tgt_lang, template, n_shots=0, shot_sampler=
 
     if tokenizer_for_chat is not None and tokenizer_for_chat.chat_template is not None:
         messages = [{"role": "user", "content": prompt}]
-        prompt = tokenizer_for_chat.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        prompt = tokenizer_for_chat.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
 
     return prompt
 
 
 def prep_example_multiturn(example, gold_transcription, src_lang, tgt_lang, template, tokenizer):
     """
-    The gold_transcription does not need to be gold, I'm just keeping the variable
-    name for convenience.
+    The gold_transcription does not need to be gold, I'm just keeping the
+    variable name for convenience.
     """
 
     template_args = {"example": example}
@@ -140,21 +136,16 @@ def prep_example_multiturn(example, gold_transcription, src_lang, tgt_lang, temp
 
 
 def main(args):
-    # st_gold_chain completely fails
+    # "st_multiturn": ["Speech: {example}\nEnglish:", "{transcription}", "{tgt_lang}:"]
+    # I wonder if the asr_simple and st_simple templates are too similar
     templates = {
         "mt_zero": "Translate the following text from {src_lang} to {tgt_lang}.\n{src_lang}: {example}\n{tgt_lang}:",
-        "mt_zero_verbose": "Translate the following {src_lang} source text to {tgt_lang}:\n{src_lang}: {example}\n{tgt_lang}:",
-        "mt_zero_simple": "{src_lang}: {example}\n {tgt_lang}:",
         "mt_icl": "{src_lang}: {example}\n{tgt_lang}:",
         "asr_simple": "Speech: {example}\n English:",
         "asr_nolang": "Speech: {example}\n Text:",
         "asr_bothlang": "English speech: {example}\n English text:",
         "asr_spiritlm": "[Speech] {example} \n[Text]",
-        "st_simple": "Speech: {example}\n {tgt_lang}:",
-        "st_chain": "Speech: {example}\nTranscribe this Speech to English, then translate it to {tgt_lang}.\nEnglish:",
-        "st_gold_chain": "Speech: {example}\nTranscribe this Speech to English, then translate it to {tgt_lang}.\nEnglish: {gold_transcription}\n",
-        "st_simple_gold": "Speech: {example}\n English: {gold_transcription}\n {tgt_lang}:",
-        "st_multiturn": ["Speech: {example}\nEnglish:", "{transcription}", "{tgt_lang}:"]
+        "st_simple": "Speech: {example}\n {tgt_lang}:"
     }
     assert args.template in templates
     assert (args.shot_src is None) == (args.shot_tgt is None)
@@ -162,14 +153,19 @@ def main(args):
     random.seed(a=args.seed)
 
     if args.shot_src is not None:
-        # print("THE TEMPLATE", args.template, args.template.startswith("st"))
         if args.template.startswith("st"):
             sampler = STShotSampler(args.shot_src, args.shot_tgt, args.src_lang, args.tgt_lang)
         elif args.template.startswith("mt"):
             sampler = ShotSampler(args.shot_src, args.shot_tgt, args.src_lang, args.tgt_lang)
         else:
             asr_model = "tower" if args.template != "asr_spiritlm" else "spiritlm"
-            sampler = ASRShotSampler(args.shot_src, args.shot_tgt, max_src_len=args.max_src_len, max_tgt_len=args.max_tgt_len, model=asr_model)
+            sampler = ASRShotSampler(
+                args.shot_src,
+                args.shot_tgt,
+                max_src_len=args.max_src_len,
+                max_tgt_len=args.max_tgt_len,
+                model=asr_model
+            )
     else:
         sampler = None
 
@@ -222,10 +218,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-tgt-len", type=int, default=None)
     parser.add_argument("--src-lang")
     parser.add_argument("--tgt-lang")
-    parser.add_argument("--template",
-                        choices=["mt_zero", "mt_zero_verbose", "mt_zero_simple", "mt_icl",
-                                 "asr_simple", "asr_nolang", "asr_bothlang", "asr_spiritlm",
-                                 "st_simple", "st_chain", "st_gold_chain", "st_simple_gold", "st_multiturn"])
+    parser.add_argument("--template", choices=["mt_zero","mt_icl", "asr_simple", "st_simple"])
     parser.add_argument("--chat-tokenizer", default=None)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()

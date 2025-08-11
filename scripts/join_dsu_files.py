@@ -3,7 +3,6 @@ from os.path import join
 
 
 def main(args):
-    # /mnt/scratch-artemis/bpop/SpireLM/experiments/label-commonvoice-outputs/Deduplicate/HubertDtype.fp32+ShardNumber.*/dsus.txt
     with open(args.out, "w") as outf:
         for i in range(args.shard_start, args.shard_end + 1):
             shard_path = join(args.corpus_dir, "HubertDtype.fp32+ShardNumber.{}".format(i), "dsus.txt")

@@ -33,7 +33,10 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--langs", nargs="+", default=["cmn_Hans", "deu_Latn", "eng_Latn", "fra_Latn", "ita_Latn", "kor_Hang", "nld_Latn", "rus_Cyrl", "por_Latn", "spa_Latn"])
+    parser.add_argument("--langs", nargs="+",
+                        default=["cmn_Hans", "deu_Latn", "eng_Latn", "fra_Latn",
+                                 "ita_Latn", "kor_Hang", "nld_Latn", "rus_Cyrl",
+                                 "por_Latn", "spa_Latn"])
     parser.add_argument("--flores-path", default="openlanguagedata/flores_plus")
     parser.add_argument("--dev", default="dev/")
     parser.add_argument("--devtest", default="devtest/")

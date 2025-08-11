@@ -1,5 +1,5 @@
 import argparse
-import subprocess  # maybe we move this to a different script
+import subprocess
 import os
 from os.path import basename, join, splitext
 from tqdm import tqdm

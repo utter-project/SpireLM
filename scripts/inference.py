@@ -2,27 +2,21 @@ import argparse
 import json
 import sys
 from os.path import join
-from itertools import repeat
 
 import tqdm
 import torch
 import torchaudio
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, \
+from transformers import AutoModelForCausalLM, AutoTokenizer, \
     SeamlessM4Tv2ForSpeechToText, SeamlessM4Tv2ForTextToText, AutoProcessor
 from vllm import LLM, SamplingParams
 
 
 def _generate_vllm(prompts, model, args):
-    # Sonal also included ['English:', 'English Text:'] in the stops --
-    # I'll try without
     stops = ["<\s>"]
     if not args.chain:
         stops.extend(['\\n', '\n', "<END>"])
     else:
         stops.append("<|im_end|>")
-
-    if args.spiritlm:
-        stops.extend(["<END>", "[Speech]"])
 
     sampling_args = {
         "use_beam_search": args.beam_size > 1,
@@ -42,22 +36,8 @@ def _generate_vllm(prompts, model, args):
     # objects that contain the prompt, generated text, and other information.
     outputs = model.generate(prompts, sampling_params)
     predictions = [output.outputs[0].text for output in outputs]
-    if args.chain:
-        transcriptions = []
-        translations = []
-        for pred in predictions:
-            parts = pred.split("\n", maxsplit=1)
-            if len(parts) == 2:
-                transcription, translation = parts
-                translation = translation.split(": ", maxsplit=1)[1]
-            else:
-                transcription = parts[0]
-                translation = ""
-            transcriptions.append(transcription)
-            translations.append(translation)
-        return transcriptions, translations
-    else:
-        return predictions
+
+    return predictions
 
 
 def _generate_hf(prompts, model, args):
@@ -75,7 +55,6 @@ def _generate_hf(prompts, model, args):
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
 
-    # batch prompts into list of lists of strings
     predictions = []
     for i in tqdm.trange(0, len(prompts), args.batch_size):
         batch = prompts[i: i + args.batch_size]
@@ -92,36 +71,12 @@ def _generate_hf(prompts, model, args):
                 do_sample=False,
                 max_new_tokens=args.max_length,
                 temperature=args.temperature,
-                num_beams=args.beam_size,
-                # min_new_tokens=2
+                num_beams=args.beam_size
             )
 
         decoded_batch = tokenizer.batch_decode(output[:, input_length:], skip_special_tokens=True)
         predictions.extend([pred.strip() for pred in decoded_batch])
 
-    '''
-    pipe = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        batch_size=args.batch_size,
-        device=args.device
-    )
-
-    pipe_kwargs = {"max_new_tokens": args.max_length,
-                   "num_beams": args.beam_size,
-                   "do_sample": False,
-                   "return_full_text": False}
-
-    predictions = []
-    for batch in pipe(prompts, **pipe_kwargs):
-        # the old version of this failed -- maybe the pipeline api changed?
-        for pred in batch:
-            out = pred["generated_text"].strip()
-            predictions.append(out)
-        # out = batch["generated_text"].lstrip()
-        # predictions.append(out)
-    '''
     return predictions
 
 
@@ -134,7 +89,6 @@ def _generate_hf_seamless(prompts, model, args):
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
 
-    # batch prompts into list of lists of strings
     predictions = []
     for i in tqdm.trange(0, len(prompts), args.batch_size):
         batch = prompts[i: i + args.batch_size]
@@ -156,7 +110,6 @@ def _generate_hf_seamless(prompts, model, args):
                 temperature=args.temperature,
                 num_beams=args.beam_size,
                 tgt_lang=args.tgt_lang
-                # min_new_tokens=2
             )
 
         decoded_batch = processor.batch_decode(output, skip_special_tokens=True)
@@ -168,12 +121,12 @@ def _generate_hf_seamless(prompts, model, args):
 def generate(prompts, model, args):
     if args.backend == "vllm":
         return _generate_vllm(prompts, model, args)
-    else:
-        if args.model_type == "dec":
-            return _generate_hf(prompts, model, args)
-        else:
-            # encdec-speech
-            return _generate_hf_seamless(prompts, model, args)
+
+    if args.model_type == "dec":
+        return _generate_hf(prompts, model, args)
+
+    # encdec-speech
+    return _generate_hf_seamless(prompts, model, args)
 
 
 def load_json(path):
@@ -191,7 +144,7 @@ def load_wav_tsv(path):
         parent_dir = f.readline().strip()  # should just be root
         audios = []
         for line in f:
-            path = line.strip().split("\t")[0]
+            path = join(parent_dir, line.strip().split("\t")[0])
             example, orig_freq = torchaudio.load(path)
             example = torchaudio.functional.resample(example, orig_freq=orig_freq, new_freq=16_000)
             audios.append(example)
@@ -205,8 +158,6 @@ def load_raw_text(path):
 
 def main(args):
     assert len(args.inpaths) == len(args.outpaths)
-    if args.chain:
-        assert len(args.midpaths) == len(args.outpaths)
 
     # hints for why results may not align with HF:
     # https://github.com/vllm-project/vllm/pull/1885
@@ -234,25 +185,14 @@ def main(args):
     input_readers = {"json": load_json, "wav_tsv": load_wav_tsv, "raw_text": load_raw_text}
     input_reader = input_readers[args.input_format]
 
-    midpaths = args.midpaths if args.midpaths else repeat(None)
-
-    for inpath, outpath, midpath in zip(args.inpaths, args.outpaths, midpaths):
+    for inpath, outpath in zip(args.inpaths, args.outpaths):
         prompts = input_reader(inpath)
 
         predictions = generate(prompts, model, args)
 
-        if args.chain:
-            transcriptions, translations = predictions
-            with open(outpath, "w") as f:
-                for prediction in translations:
-                    f.write(prediction + "\n")
-            with open(midpath, "w") as f:
-                for prediction in transcriptions:
-                    f.write(prediction + "\n")
-        else:
-            with open(outpath, "w") as f:
-                for prediction in predictions:
-                    f.write(prediction + "\n")
+        with open(outpath, "w") as f:
+            for prediction in predictions:
+                f.write(prediction + "\n")
 
 
 if __name__ == "__main__":
@@ -262,7 +202,6 @@ if __name__ == "__main__":
     parser.add_argument("--slow-tokenizer", action="store_true", help="Necessary for properly handling <extra_id_{}> (for DSUs)")
     parser.add_argument("--inpaths", nargs="+")
     parser.add_argument("--outpaths", nargs="+")
-    parser.add_argument("--midpaths", nargs="*")
     parser.add_argument("--beam-size", default=1, type=int)
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("--max-length", default=128, type=int)
@@ -279,7 +218,5 @@ if __name__ == "__main__":
                         default="dec", help="Only used with backend=hf")
     parser.add_argument("--seamless-input-type", choices=["speech", "text"], default="speech",
                         help="Only for seamless models")
-    parser.add_argument("--chain", action="store_true")
-    parser.add_argument("--spiritlm", action="store_true")
     args = parser.parse_args()
     main(args)

@@ -17,7 +17,6 @@ def load_tsv(path):
 
 
 def generate(prompts, args):
-    # dataset = load_dataset("openslr/librispeech_asr", "clean",split='test')["audio"]
     pipe = pipeline(
         "automatic-speech-recognition",
         args.model,
@@ -29,7 +28,9 @@ def generate(prompts, args):
     predictions = []
     for i in tqdm.trange(0, len(prompts), args.batch_size):
         batch = prompts[i: i + args.batch_size]
-        preds = pipe(batch, max_new_tokens=args.max_length, generate_kwargs={"language": "english"})
+        preds = pipe(
+            batch, max_new_tokens=args.max_length, generate_kwargs={"language": "english"}
+        )
         for pred in preds:
             predictions.append(pred["text"])
 
