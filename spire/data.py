@@ -10,7 +10,7 @@ from datasets import load_from_disk, load_dataset, Audio
 
 class AudioTSVDataset(Dataset):
 
-    def __init__(self, tsv_path=None, examples=None, sample_rate=16000):
+    def __init__(self, tsv_path=None, examples=None):
         assert (tsv_path is not None) != (examples is not None)
         if tsv_path is not None:
             with open(tsv_path) as f:
@@ -19,30 +19,21 @@ class AudioTSVDataset(Dataset):
             self.data = [(join(root, wav), int(n_samples)) for (wav, n_samples) in lines]
         else:
             self.data = examples
-        # self.data = sorted(self.data, key=lambda x: x[1], reverse=True)
-        self.sample_rate = sample_rate
 
     def select(self, indices):
         # return a new dataset containing the relevant indices from self
         selected = [self.data[i] for i in indices]
-        return AudioTSVDataset(examples=selected, sample_rate=self.sample_rate)
+        return AudioTSVDataset(examples=selected)
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        # this is the one that actually loads the stuff
         path, n_samples = self.data[idx]
-        # do we really want to do the reading here?
-        # waveform, sample_rate = sf.read(path, dtype="float32")
-        # assert sample_rate == self.sample_rate
-        # return {"audio": waveform, "n_samples": n_samples, "audio_path": path, "idx": idx}
         return {"n_samples": n_samples, "audio_path": path, "idx": idx}
 
 
 def collate_fn(inputs, feature_extractor):
-    # inputs should be a list of dicts returned from AudioTSVDataset
-    # audios = [inp["audio"] for inp in inputs]
     audios = [sf.read(inp["audio_path"])[0] for inp in inputs]
     batch = feature_extractor(
         audios,
@@ -56,8 +47,6 @@ def collate_fn(inputs, feature_extractor):
 
 
 def collate_hf(inputs, feature_extractor):
-    # inputs should be a list of dicts returned from AudioTSVDataset
-    # audios = [inp["audio"] for inp in inputs]
     audios = [inp["audio"]["array"] for inp in inputs]
     batch = feature_extractor(
         audios,
@@ -99,7 +88,6 @@ class TokenBatchSampler(BatchSampler):
         for idx in self.sampler:
             ex = self.data[idx]
 
-            #
             n_tokens = ex["n_samples"]
             batch.append(idx)
             longest_len = max(longest_len, n_tokens)
@@ -115,16 +103,15 @@ class TokenBatchSampler(BatchSampler):
         raise TypeError("The number of batches in a token-batched epoch is not known in advance")
 
 
-def load_hf_audio_dataset(path, path_extra="", split="train", resample_to=None, from_disk=True):
+def load_hf_audio_dataset(
+        path, path_extra="", split="train",
+        resample_to=None, from_disk=True,
+        start_ix=0, n_examples=0, remove_audio=False, add_index=False):
+
+    if remove_audio:
+        assert resample_to is None
+
     if from_disk:
-        # currently supporting commonvoice, gigaspeech, spgi, voxpopuli
-
-        # problem with this is the assumption of path_extra and such doesn't work
-        # with librispeech
-        # so either we use weird split names, or do some librispeech-specific stuff
-
-        # lang or size...maybe should be path_extra
-
         if "openslr/librispeech_asr" in path:
             assert path_extra
             split = split + "." + path_extra
@@ -138,98 +125,84 @@ def load_hf_audio_dataset(path, path_extra="", split="train", resample_to=None, 
         else:
             dataset = load_dataset(path, split=split)
 
-    # commonvoice and VCTK need this
-    if resample_to is not None:
+    if remove_audio:
+        dataset = dataset.remove_columns("audio")
+    elif resample_to is not None:
         dataset = dataset.cast_column("audio", Audio(sampling_rate=resample_to))
+
+    dataset = dataset.skip(start_ix)
+    if n_examples > 0:
+        examples_to_take = min(len(dataset), n_examples)
+        dataset = dataset.take(examples_to_take)
+
+    if add_index:
+        dataset = dataset.add_column(name="idx", column=list(range(len(dataset))))
 
     return dataset
 
 
 def get_valid_indices(dataset):
-    ix = []
-    for i in tqdm(range(len(dataset))):
-        try:
-            _ = dataset[i]
-        except sf.LibsndfileError:
-            continue
-        ix.append(i)
-    return ix
 
-
-def get_valid_indices_tsv(dataset):
     ix = []
-    for i in tqdm(range(len(dataset))):
-        ex = dataset[i]
-        if ex["n_samples"] == 0:
-            continue
-        ix.append(i)
+
+    if isinstance(dataset, AudioTSVDataset):
+        for i in tqdm(range(len(dataset))):
+            ex = dataset[i]
+            if ex["n_samples"] == 0:
+                continue
+            ix.append(i)
+
+    else:
+        for i in tqdm(range(len(dataset))):
+            try:
+                _ = dataset[i]
+            except sf.LibsndfileError:
+                continue
+            ix.append(i)
     return ix
 
 
 def build_dataloader(
-        path, sample_rate=16000, num_workers=0,
-        batch_size=1, dataset_type="tsv", start_ix=0, n_examples=0,
-        validate_examples=False, path_extra="en", hf_location="disk",
+        path, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
+        n_examples=0, validate_examples=False, path_extra="en", hf_location="disk",
         hf_split="test", resample_to=None):
 
+    # Build dataset
+    if dataset_type == "tsv":
+        dataset = AudioTSVDataset(tsv_path=path)
+    else:
+        dataset = load_hf_audio_dataset(
+            path, path_extra=path_extra, resample_to=resample_to, split=hf_split,
+            from_disk=hf_location == "disk", start_ix=start_ix, n_examples=n_examples
+        )
+
+    # optionally filter invalid examples
+    length_before_validating = len(dataset)
+    if validate_examples:
+        valid_indices = get_valid_indices(dataset)
+        dataset = dataset.select(valid_indices)
+    print("Dataset lengths:")
+    print("Raw: {}\tAfter validating: {}".format(length_before_validating, len(dataset)))
+
+    # Build the loader
     feature_extractor = Wav2Vec2FeatureExtractor()
     if dataset_type == "tsv":
-        dataset = AudioTSVDataset(tsv_path=path, sample_rate=sample_rate)
-        length_before_validating = len(dataset)
-        if validate_examples:
-            valid_indices = get_valid_indices_tsv(dataset)
-            dataset = dataset.select(valid_indices)
-        print("Dataset lengths:")
-        print("Raw: {}\tAfter validating: {}".format(length_before_validating, len(dataset)))
-
         sampler = LengthSortedAudioSampler(dataset)
         batch_sampler = TokenBatchSampler(dataset, sampler, batch_size)
         n_batches = len([b for b in batch_sampler])
-        loader = DataLoader(
-            dataset,
-            batch_sampler=batch_sampler,
-            collate_fn=partial(collate_fn, feature_extractor=feature_extractor),
-            num_workers=num_workers,
-            pin_memory=True,
-            # drop_last=False
-        )
-        return loader, n_batches, length_before_validating
+        collate_func = collate_fn
+        loader_kwargs = {"batch_sampler": batch_sampler}
     else:
-        # huggingface dataset.
-        dataset = load_hf_audio_dataset(
-            path, path_extra=path_extra, resample_to=resample_to,
-            split=hf_split, from_disk=dataset_type == "hf-disk"
-        )
+        n_batches = None
+        collate_func = collate_hf
+        loader_kwargs = {
+            "drop_last": False, "batch_size": batch_size
+        }
+    collator = partial(collate_func, feature_extractor=feature_extractor)
+    loader = DataLoader(
+        dataset, num_workers=num_workers, pin_memory=True, collator=collator, **loader_kwargs
+    )
 
-        dataset = dataset.skip(start_ix)
-        if n_examples > 0:
-            examples_to_take = min(len(dataset), n_examples)
-            dataset = dataset.take(examples_to_take)
-
-        # add an indices column, I guess
-        dataset = dataset.add_column(name="idx", column=list(range(len(dataset))))
-
-        length_before_validating = len(dataset)
-
-        # here: optionally validate based on soundfile errors
-        if validate_examples:
-            valid_indices = get_valid_indices(dataset)
-            dataset = dataset.select(valid_indices)
-
-            '''
-            for bad_i in bad_indices:
-                dataset = dataset.take(bad_i)
-            '''
-        print("Dataset lengths:")
-        print("Raw: {}\tAfter validating: {}".format(length_before_validating, len(dataset)))
-
-        loader = DataLoader(
-            dataset,
-            num_workers=num_workers,
-            pin_memory=True,
-            batch_size=batch_size,
-            drop_last=False,
-            collate_fn=partial(collate_hf, feature_extractor=feature_extractor)
-        )
-
-        return loader, len(loader), length_before_validating
+    if n_batches is None:
+        n_batches = len(loader)
+    return loader, n_batches, length_before_validating

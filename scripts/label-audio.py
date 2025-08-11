@@ -15,10 +15,6 @@ def pred2str_single(pred):
     return pred
 
 
-def pred2str(pred):
-    return [pred2str_single(p) for p in pred]
-
-
 def main(args):
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
@@ -34,7 +30,6 @@ def main(args):
 
     loader, n_batches, raw_length = build_dataloader(
         path=args.tsv_path,
-        sample_rate=16000,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         dataset_type=args.dataset_type,

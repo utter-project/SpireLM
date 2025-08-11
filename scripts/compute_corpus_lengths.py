@@ -40,16 +40,12 @@ def main(args):
     compute_time_func = compute_time_funcs[corpus_name]
 
     dataset = load_hf_audio_dataset(
-        args.path, path_extra=args.path_extra, split=args.split
+        args.path, path_extra=args.path_extra, split=args.split,
+        remove_audio=corpus_name != "commonvoice"
     )
     if corpus_name != "commonvoice":
-        # For SPGI and Gigaspeech, lengths can be computed without loading the
-        # audio files
-        dataset = dataset.remove_columns("audio")
-
         disable_caching()
         dataset = dataset.map(compute_time_func)
-
         times = np.array(dataset["seconds"])
     else:
         times_list = []

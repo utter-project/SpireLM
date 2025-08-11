@@ -9,8 +9,9 @@ def main(args):
         args.path,
         path_extra=args.path_extra,
         split=args.split,
-        from_disk=args.dataset_type=="hf-disk"
-    ).remove_columns("audio")
+        from_disk=args.dataset_type=="hf-disk",
+        remove_audio=True
+    )
 
     text = dataset[args.text_field]
     with open(args.corpus, "w") as corpus_f:
@@ -19,7 +20,6 @@ def main(args):
 
     metadata = []
     for example_dict in dataset:
-        # del example_dict["audio"]
         metadata.append(example_dict)
     with open(args.metadata, "w") as metadata_f:
         json.dump(metadata, metadata_f, indent=4, ensure_ascii=False)
