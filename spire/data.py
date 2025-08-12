@@ -173,7 +173,8 @@ def build_dataloader(
     else:
         dataset = load_hf_audio_dataset(
             path, path_extra=path_extra, resample_to=resample_to, split=hf_split,
-            from_disk=hf_location == "disk", start_ix=start_ix, n_examples=n_examples
+            from_disk=hf_location == "disk", add_index=True,
+            start_ix=start_ix, n_examples=n_examples
         )
 
     # optionally filter invalid examples
@@ -200,7 +201,7 @@ def build_dataloader(
         }
     collator = partial(collate_func, feature_extractor=feature_extractor)
     loader = DataLoader(
-        dataset, num_workers=num_workers, pin_memory=True, collator=collator, **loader_kwargs
+        dataset, num_workers=num_workers, pin_memory=True, collate_fn=collator, **loader_kwargs
     )
 
     if n_batches is None:
