@@ -13,10 +13,7 @@ from vllm import LLM, SamplingParams
 
 def _generate_vllm(prompts, model, args):
     stops = ["<\s>"]
-    if not args.chain:
-        stops.extend(['\\n', '\n', "<END>"])
-    else:
-        stops.append("<|im_end|>")
+    stops.extend(['\\n', '\n', "<END>"])
 
     sampling_args = {
         "use_beam_search": args.beam_size > 1,

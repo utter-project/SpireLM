@@ -38,7 +38,8 @@ def main(args):
         validate_examples=args.validate_examples,
         path_extra=args.path_extra,
         hf_split=args.hf_split,
-        resample_to=args.resample_to
+        resample_to=args.resample_to,
+        hf_location="disk" if args.dataset_type == "hf-disk" else "cache"
     )
 
     with open(args.out_path, "w") as f:
@@ -70,23 +71,23 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tsv_path")
+    parser.add_argument("--tsv_path")  # replace this
     parser.add_argument("--out_path", required=True)
     parser.add_argument("--ckpt_path", default="facebook/hubert-large-ll60k")
     parser.add_argument("--km_path", default="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000")
     parser.add_argument("--layer", type=int, default=22)
     parser.add_argument("--as-indices", action="store_true")
-    parser.add_argument("--legacy-audio", action="store_true")
     parser.add_argument("--no-dedup", action="store_true")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--num-workers", type=int, default=1)
     parser.add_argument("--dtype", default="fp32", choices=["fp32", "bf16"])
     parser.add_argument("--compile", action="store_true")
+    parser.add_argument("--resample-to", type=int, default=16000)
     parser.add_argument("--dataset-type", default="tsv", choices=["tsv", "hf-disk", "hf-cache"])
     parser.add_argument("--path-extra", default="",
                         help="'xl' for Gigaspeech, for example")
     parser.add_argument("--hf-split", default="test")
-    parser.add_argument("--resample-to", type=int, default=None)
+    parser.add_argument("--resample-to", type=int, default=None)  # would like to get rid of this
     parser.add_argument("--start-ix", type=int, default=0,
                         help="For slicing an HF dataset (start index in the corpus)")
     parser.add_argument("--n-examples", type=int, default=0,

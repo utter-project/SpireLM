@@ -108,9 +108,6 @@ def load_hf_audio_dataset(
         resample_to=None, from_disk=True,
         start_ix=0, n_examples=0, remove_audio=False, add_index=False):
 
-    if remove_audio:
-        assert resample_to is None
-
     if from_disk:
         if "openslr/librispeech_asr" in path:
             assert path_extra

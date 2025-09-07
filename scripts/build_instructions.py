@@ -136,8 +136,6 @@ def prep_example_multiturn(example, gold_transcription, src_lang, tgt_lang, temp
 
 
 def main(args):
-    # "st_multiturn": ["Speech: {example}\nEnglish:", "{transcription}", "{tgt_lang}:"]
-    # I wonder if the asr_simple and st_simple templates are too similar
     templates = {
         "mt_zero": "Translate the following text from {src_lang} to {tgt_lang}.\n{src_lang}: {example}\n{tgt_lang}:",
         "mt_icl": "{src_lang}: {example}\n{tgt_lang}:",
