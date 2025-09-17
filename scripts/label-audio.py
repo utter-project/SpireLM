@@ -87,7 +87,6 @@ if __name__ == "__main__":
     parser.add_argument("--path-extra", default="",
                         help="'xl' for Gigaspeech, for example")
     parser.add_argument("--hf-split", default="test")
-    parser.add_argument("--resample-to", type=int, default=None)  # would like to get rid of this
     parser.add_argument("--start-ix", type=int, default=0,
                         help="For slicing an HF dataset (start index in the corpus)")
     parser.add_argument("--n-examples", type=int, default=0,
