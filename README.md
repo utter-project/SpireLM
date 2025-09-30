@@ -56,3 +56,6 @@ If you use Spire, please cite our work:
       url={https://arxiv.org/abs/2503.10620}
 }
 ```
+
+## Acknowledgments
+This work was supported by EU's Horizon Europe Research and Innovation Actions (UTTER, contract 101070631), by UK Research and Innovation (UKRI) under the UK government’s Horizon Europe funding guarantee (grant number 10039436: UTTER), by the project DECOLLAGE (ERC-2022-CoG 101088763), by the Portuguese Recovery and Resilience Plan through project C645008882-00000055 (Center for Responsible AI), by Fundação para a Ciência e Tecnologia (FCT) through the project with reference UIDB/50021/2020 (DOI:10.54499/UIDB/50021/2020), and by FCT/MECI through national funds and when applicable co-funded EU funds under UID/50008: Instituto de Telecomunicações.
