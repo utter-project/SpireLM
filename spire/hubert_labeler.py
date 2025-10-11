@@ -22,6 +22,10 @@ class HubertLabeler(nn.Module):
 
         self.kmeans = KMeans(km_path, dtype=dtype)
 
+    @property
+    def vocab_size(self):
+        return self.kmeans.vocab_size
+
     def forward(self, batch, attention_mask=None):
         """
         Take a batch of inputs, return scores for all V clusters
@@ -31,8 +35,13 @@ class HubertLabeler(nn.Module):
         dist = self.kmeans(feats)
         return dist
 
-    def predict(self, batch, attention_mask=None):
+    def predict(self, batch, attention_mask=None, label_mask=None):
         dist = self(batch, attention_mask=attention_mask)
+        # label_mask should be a boolean vector of length V
+        if label_mask is not None:
+            # label_mask is True for kept parts of the vocab, False elsewhere
+            dist.masked_fill_(~label_mask, float("inf"))
+
         labels = dist.argmin(dim=-1)
 
         # what's feats.shape[1]? It's the length dimension, so it should be
@@ -83,6 +92,10 @@ class KMeans(nn.Module):
         # convert the
         self.C = nn.Parameter(torch.from_numpy(C).to(dtype))
         self.Cnorm = nn.Parameter(torch.from_numpy(Cnorm).to(dtype))
+
+    @property
+    def vocab_size(self):
+        return self.C.shape[1]
 
     def forward(self, x):
         """

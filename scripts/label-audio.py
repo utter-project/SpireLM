@@ -15,6 +15,15 @@ def pred2str_single(pred):
     return pred
 
 
+def make_label_mask(vocab_path, vocab_size):
+    label_mask = torch.zeros(vocab_size, dtype=torch.bool, device="cuda")
+    with open(vocab_path) as f:
+        for line in f:
+            i = int(line.strip())
+            label_mask[i] = 1
+    return label_mask
+
+
 def main(args):
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
@@ -25,6 +34,8 @@ def main(args):
 
     labeler = labeler.to(device="cuda")
     labeler.eval()
+
+    # need to investigate this option in more depth
     if args.compile:
         labeler = torch.compile(labeler)
 
@@ -42,6 +53,10 @@ def main(args):
         hf_location="disk" if args.dataset_type == "hf-disk" else "cache"
     )
 
+    label_mask = None
+    if args.vocabulary is not None:
+        label_mask = make_label_mask(args.vocabulary, labeler.vocab_size)
+
     with open(args.out_path, "w") as f:
         with torch.no_grad():
             labels = []
@@ -49,7 +64,9 @@ def main(args):
             for batch in tqdm(loader, total=n_batches):
                 inp = batch.input_values.to(dtype=dtype, device="cuda")
                 mask = batch.attention_mask.cuda()
-                batch_labels = labeler.predict(batch=inp, attention_mask=mask)
+                batch_labels = labeler.predict(
+                    batch=inp, attention_mask=mask, label_mask=label_mask
+                )
                 detokenized_labels = detokenize(
                     batch_labels,
                     indices_only=args.as_indices,
@@ -78,6 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("--layer", type=int, default=22)
     parser.add_argument("--as-indices", action="store_true")
     parser.add_argument("--no-dedup", action="store_true")
+    parser.add_argument("--vocabulary", help="If specified, one index per line. DSUs not from this set will not be generated.")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--num-workers", type=int, default=1)
     parser.add_argument("--dtype", default="fp32", choices=["fp32", "bf16"])
