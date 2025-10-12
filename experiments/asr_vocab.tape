@@ -122,17 +122,17 @@ task ComputeWER
 
 
 plan Labelize {
-    reach LabelAudio via (ASRDataset: fleurs) * (VocabSize: *) * (Metric: *)
+    reach LabelAudio via (ASRDataset: fleurs) * (VocabSize: *) * (Metric: *) * (CorpusFreqs: *)
 }
 
 ##### Hypothesis Generation #####
 
 plan DecodeAll {
-    reach Decode via (ASRDataset: fleurs) * (Speech2TextModel: *) * (VocabSize: *) * (Metric: *)
+    reach Decode via (ASRDataset: fleurs) * (Speech2TextModel: *) * (VocabSize: *) * (Metric: *) * (CorpusFreqs: *)
 }
 
 ##### Evaluation #####
 
 plan ComputeWERAll {
-    reach ComputeWER via (ASRDataset: fleurs) * (Speech2TextModel: *) * (VocabSize: *) * (Metric: *)
+    reach ComputeWER via (ASRDataset: fleurs) * (Speech2TextModel: *) * (VocabSize: *) * (Metric: *) * (CorpusFreqs: *)
 }
