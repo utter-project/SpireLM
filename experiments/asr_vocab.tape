@@ -92,7 +92,7 @@ task DumpASRText
 }
 
 task NormalizeHyps
-    < hyps=(ModelFamily: tower=$hyps@Decode seamless=$hyps@DecodeSeamless whisper=$hyps@DecodeWhisper)
+    < hyps=@Decode
     > hyps_normalized=hyps.txt.norm
     :: normalizer=@
     :: repo=@
@@ -128,11 +128,11 @@ plan Labelize {
 ##### Hypothesis Generation #####
 
 plan DecodeAll {
-    reach Decode via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *) * (VocabSize: *)
+    reach Decode via (ASRDataset: fleurs) * (Speech2TextModel: *) * (VocabSize: *)
 }
 
 ##### Evaluation #####
 
 plan ComputeWERAll {
-    reach ComputeWER via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *) * (VocabSize: *)
+    reach ComputeWER via (ASRDataset: fleurs) * (Speech2TextModel: *) * (VocabSize: *)
 }
