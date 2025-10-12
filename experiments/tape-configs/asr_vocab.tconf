@@ -83,6 +83,6 @@ global {
         CorpusFreqs:
             cv_spgi_giga=/mnt/data-artemis/bpop/SpireLM/experiments/cv-spgi-giga-freqs.npy
             magikarp_out_prelim=/mnt/data-artemis/bpop/SpireLM/experiments/magikarp_prelim.npy)
-    vocab_size=(VocabSize: 500 1000 2000 100 200 3000 4000 4500)
+    vocab_size=(VocabSize: 500 1000 2000 100 200 3000 4000 4500 4800)
     metric=(Metric: frequency isolation)
 }
