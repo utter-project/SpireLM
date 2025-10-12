@@ -122,7 +122,7 @@ task ComputeWER
 
 
 plan Labelize {
-    reach LabelAudio via (ASRDataset: fleurs)
+    reach LabelAudio via (ASRDataset: fleurs) * (VocabSize: *)
 }
 
 ##### Hypothesis Generation #####
