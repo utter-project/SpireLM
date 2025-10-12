@@ -128,11 +128,11 @@ plan Labelize {
 ##### Hypothesis Generation #####
 
 plan DecodeAll {
-    reach Decode via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *)
+    reach Decode via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *) * (VocabSize: *)
 }
 
 ##### Evaluation #####
 
 plan ComputeWERAll {
-    reach ComputeWER via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *)
+    reach ComputeWER via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *) * (VocabSize: *)
 }
