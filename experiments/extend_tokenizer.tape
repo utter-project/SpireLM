@@ -11,7 +11,7 @@ task ExtendTokenizer
     # pre-dsu specials (like <CLS>) -- these need to be added to the spm model
     # post-dsu typs (like im_end) (are these ones actually specials?) -- shouldn't need to be added to the spm model
 
-    python $repo/scripts/extend-spm.py \
+    python $repo/scripts/extend_spm.py \
         --original $tower_base_spm \
         --n_new_dsus $n_dsus \
         --new_specials "<CLS>,<EOD>,<MASK>,<PAD>,<SEP>" \
