@@ -14,7 +14,7 @@ requirements = [
 ]
 
 setup(name='SpireLM',
-      version='0.1',
+      version='0.1.1',
       description='LLM for speech and text tasks',
       author='Ben Peters',
       author_email='benzurdopeters@gmail.com',
