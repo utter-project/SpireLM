@@ -2,7 +2,7 @@ task ExtendTokenizer
     > tokenizer_base
     > tokenizer_instruct
     :: n_dsus=@
-    :: tower_base_spm=@
+    :: base_model=@
     :: repo=@
 {
     # challenge: in what order do we add stuff? The <CLS>, etc. needs to be
@@ -12,7 +12,7 @@ task ExtendTokenizer
     # post-dsu typs (like im_end) (are these ones actually specials?) -- shouldn't need to be added to the spm model
 
     python $repo/scripts/extend_spm.py \
-        --original $tower_base_spm \
+        --original $base_model \
         --n_new_dsus $n_dsus \
         --new_specials "<CLS>,<EOD>,<MASK>,<PAD>,<SEP>" \
         --spm_prefix extended \
@@ -20,76 +20,34 @@ task ExtendTokenizer
         --hf_instruct $tokenizer_instruct
 }
 
-task FormatFleursPUA
-    > dsus=dsu.txt
-    :: fleurs_dsus=@
+
+
+task ExtendModel
+    < tokenizer=$tokenizer_base@ExtendTokenizer
+    > extended_model=extended_model
+    :: base_model=@
+    :: init_strategy=@
     :: repo=@
 {
-    python $repo/tokenizer-scripts/format_dsus.py --format pua < $fleurs_dsus > $dsus
-}
 
-task BuildFleursInstructions
-    < tokenizer_instruct=@ExtendTokenizer
-    < test_dsus=$dsus@FormatFleursPUA
-    > instructions=instructions.json
-    :: inference_repo=@
-{
-    # template, language pair, number of shots
-    python $inference_repo/generation-scripts/build_instructions.py \
-        --src $test_dsus \
-        --template asr_simple \
-        --n-shots 0 \
-        --chat-tokenizer $tokenizer_instruct \
-        --out $instructions
-}
-
-task Decode
-    < instructions=@BuildFleursInstructions
-    < tokenizer_instruct=@ExtendTokenizer
-    > hyps=hyps.txt
-    :: spire_full=@
-    :: inference_repo=@
-{
-    python $inference_repo/generation-scripts/inference.py \
-        --inpaths $instructions \
-        --outpaths $hyps \
-        --model $spire_full \
-        --tokenizer $tokenizer_instruct \
-        --backend vllm \
-        --max-length 256
-
-}
-
-task DecodeSlow
-    < instructions=@BuildFleursInstructions
-    < tokenizer_instruct=@ExtendTokenizer
-    > hyps=hyps.txt
-    :: spire_full=@
-    :: inference_repo=@
-{
-    python $inference_repo/generation-scripts/inference.py \
-        --inpaths $instructions \
-        --outpaths $hyps \
-        --model $spire_full \
-        --tokenizer $tokenizer_instruct \
-        --backend vllm \
-        --slow-tokenizer \
-        --max-length 256
-
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("--model-path")
+    # parser.add_argument("--out-dir")
+    # parser.add_argument("--new-tokenizer", help="path to spm model")
+    # parser.add_argument("--init-strategy", default="default", choices=["default", "mean"])
+    # parser.add_argument("--pad-multiple", type=int, default=64)
+    python $repo/scripts/extend_model.py \
+        --model-path $base_model \
+        --init-strategy $init_strategy \
+        --new-tokenizer $tokenizer \
+        --pad-multiple 64 \
+        --out-dir $extended_model
 }
 
 plan PuaTokenizers {
     reach ExtendTokenizer
 }
 
-plan BuildInstructions {
-    reach BuildFleursInstructions
-}
-
-plan TestPuaDecode {
-    reach Decode
-}
-
-plan TestPuaDecodeSlow {
-    reach DecodeSlow
+plan Extend {
+    reach ExtendModel
 }

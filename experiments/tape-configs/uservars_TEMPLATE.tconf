@@ -1,4 +1,4 @@
 global {
     ducttape_output=/path/to/save/outputs
-    repo=/path/to/Speech-Language-Modelling
+    repo=/path/to/SpireLM
 }

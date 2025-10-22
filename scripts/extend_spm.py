@@ -4,8 +4,18 @@ This script allows
 
 import argparse
 
+from transformers import AutoTokenizer
+
 from spire.tokenizer_extension import extend_spm, convert_spm_to_hf, add_instruct_extras
 from spire.utils import indices2dsus
+
+
+def get_spm_path(path):
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(path)
+        return tokenizer.vocab_file
+    except OSError:
+        return path
 
 
 def main(args):
@@ -23,9 +33,21 @@ def main(args):
     else:
         new_types.extend(indices2dsus(range(args.n_new_dsus), args.dsu_format))
 
+    """
+    For non-sentencepiece models, it seems like the extension can be simple,
+    something like:
+    # Load tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    # add DU tokens (if used in dataset)
+    audio_tokens = [f"<DU_{i}>" for i in range(num_extra_tokens)]
+    tokenizer.add_tokens(audio_tokens)
+    """
+
+    original_path = get_spm_path(args.original)
+
     # extend the sentencepiece model
     extend_spm(
-        args.original,
+        original_path,
         args.spm_prefix,
         new_specials,
         new_types,
@@ -45,7 +67,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--original', help="Path to original sentencepiece model")
+    parser.add_argument('--original', help="Path to original model (HF or sentencepiece)")
     parser.add_argument("--n_new_dsus", type=int,
                         help="Number of new DSUs to create (mutually exclusive with --new_types)")
     parser.add_argument('--new_types',
