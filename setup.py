@@ -9,7 +9,8 @@ requirements = [
     "datasets>=2.19.2,<4.0.0",
     "vllm>=0.11.0",
     "protobuf>=5.29.3",
-    "scikit-learn>=1.3.2"
+    "scikit-learn>=1.3.2",
+    "librosa>=0.10.2.post1"
 ]
 
 setup(name='SpireLM',

@@ -6,6 +6,7 @@ anyio==4.11.0
 astor==0.8.1
 asttokens==3.0.0
 attrs==25.4.0
+audioread==3.0.1
 blake3==1.0.8
 cachetools==6.2.1
 cbor2==5.7.0
@@ -52,6 +53,8 @@ joblib==1.5.2
 jsonschema==4.25.1
 jsonschema-specifications==2025.9.1
 lark==1.2.2
+lazy_loader==0.4
+librosa==0.11.0
 llguidance==0.7.30
 llvmlite==0.44.0
 lm-format-enforcer==0.11.3
@@ -93,6 +96,8 @@ parso==0.8.5
 partial-json-parser==0.2.1.1.post6
 pexpect==4.9.0
 pillow==12.0.0
+platformdirs==4.5.0
+pooch==1.8.2
 prometheus-fastapi-instrumentator==7.1.0
 prometheus_client==0.23.1
 prompt_toolkit==3.0.52
@@ -137,7 +142,7 @@ six==1.17.0
 sniffio==1.3.1
 soundfile==0.13.1
 soxr==1.0.0
--e git+ssh://git@github.com/utter-project/SpireLM.git@baaed79a370639b5a76da133e77cc98ff462fedd#egg=SpireLM
+-e git+ssh://git@github.com/utter-project/SpireLM.git@a061aac6788a1072993095dfdac307aaa874b3a6#egg=SpireLM
 stack-data==0.6.3
 starlette==0.48.0
 sympy==1.14.0
