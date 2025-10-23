@@ -13,7 +13,11 @@ global {
     # what is this even for?
     fleurs_dsus="/mnt/scratch-artemis/bpop/tower-speech-outputs/asr-outputs/DeduplicateDSUs/ASRDataset.fleurs/labels.km.dedup"
 
-    base_model="Unbabel/TowerBase-7B-v0.1"
+    base_model=(
+        BaseModel:
+            towerbase_7B="Unbabel/TowerBase-7B-v0.1"
+            qwen3_0_6B="Qwen/Qwen3-0.6B"
+    )
 
     # I would like not to need this
     # how do we easily save the sentencepiece model?

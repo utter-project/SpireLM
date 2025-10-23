@@ -15,7 +15,7 @@ task ExtendTokenizer
         --original $base_model \
         --n_new_dsus $n_dsus \
         --new_specials "<CLS>,<EOD>,<MASK>,<PAD>,<SEP>" \
-        --spm_prefix extended \
+        --spm_prefix tmp \
         --hf_base $tokenizer_base \
         --hf_instruct $tokenizer_instruct
 }
@@ -49,5 +49,5 @@ plan PuaTokenizers {
 }
 
 plan Extend {
-    reach ExtendModel
+    reach ExtendModel via (BaseModel: *)
 }

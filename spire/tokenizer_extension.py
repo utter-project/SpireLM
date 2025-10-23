@@ -3,7 +3,7 @@ from itertools import count, repeat
 from sentencepiece import sentencepiece_model_pb2 as sp_pb2_model
 import sentencepiece as spm
 
-from transformers import LlamaTokenizer
+from transformers import LlamaTokenizer, AutoTokenizer
 
 
 TOWER_INSTRUCT_CHAT_TEMPLATE = "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content']}}{% if (loop.last and add_generation_prompt) or not loop.last %}{{ '<|im_end|>' + '\n'}}{% endif %}{% endfor %}{% if add_generation_prompt and messages[-1]['role'] != 'assistant' %}{{ '<|im_start|>assistant\n' }}{% endif %}"
@@ -52,19 +52,60 @@ def _save(proto, model_prefix):
             f.write("\t".join([piece.piece, str(int(piece.score))]) + "\n")
 
 
-def extend_spm(original_model, save_prefix, new_specials, new_types, scoring_type="bpe", new_types_are_special=False):
+def _get_spm_path(path):
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(path)
+        if hasattr(tokenizer, "vocab_file"):
+            return tokenizer.vocab_file
+        return None
+    except OSError:
+        return path
+
+
+def _extend_spm(original_model, save_prefix, new_specials, new_types, scoring_type="bpe", new_types_are_special=False):
     model, proto = _load_model(original_model)
     proto = _extend(proto, new_specials, scoring_type, special=True)
     proto = _extend(proto, new_types, scoring_type, special=new_types_are_special)
     _save(proto, save_prefix)
 
 
-def convert_spm_to_hf(spm_prefix, use_eos_as_pad=True):
+def _convert_spm_to_hf(spm_prefix, use_eos_as_pad=True):
     hf_model = LlamaTokenizer(vocab_file=spm_prefix + ".model")
     if use_eos_as_pad:
         hf_model.pad_token_id = hf_model.eos_token_id
         hf_model.pad_token = hf_model.eos_token
     return hf_model
+
+
+def extend_tokenizer(original_path, spm_prefix, new_specials, new_types, scoring_type="bpe", new_types_are_special=False):
+    """
+    Extend an spm-based tokenizer, like the llama tokenizer
+    """
+    spm_path = _get_spm_path(original_path)
+
+    if spm_path is not None:
+        # extend the sentencepiece model
+        _extend_spm(
+            spm_path,
+            spm_prefix,
+            new_specials,
+            new_types,
+            scoring_type=scoring_type,
+            new_types_are_special=new_types_are_special
+        )
+
+        # make an HF tokenizer out of the just-extended spm tokenizer
+        hf_tokenizer = _convert_spm_to_hf(spm_prefix)
+    else:
+        # no underlying sentencepiece model
+        # For non-sentencepiece models, it seems like the extension can be simple,
+        # something like:
+        # Load tokenizer
+        hf_tokenizer = AutoTokenizer.from_pretrained(original_path)
+        # add DU tokens (if used in dataset)
+        hf_tokenizer.add_tokens(new_specials + new_types)
+
+    return hf_tokenizer
 
 
 def add_instruct_extras(hf_model, im_start_is_special=True):
