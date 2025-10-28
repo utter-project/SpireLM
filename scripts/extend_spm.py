@@ -10,6 +10,18 @@ from spire.tokenizer_extension import extend_tokenizer, add_instruct_extras
 from spire.utils import indices2dsus
 
 
+def read_new_types(path, original_tokenizer_path):
+    original_vocab = AutoTokenizer.from_pretrained(original_tokenizer_path).vocab
+
+    new_types = []
+    with open(path) as f:
+        for line in f:
+            new_type = line.strip().split("\t")[0]
+            if new_type not in original_vocab:
+                new_types.append(new_type)
+    return new_types
+
+
 def main(args):
 
     new_specials = []
@@ -20,8 +32,8 @@ def main(args):
         "Must provide one of --n_new_dsus and --new_types, but not both"
     new_types = []
     if args.new_types is not None:
-        with open(args.new_types) as f:
-            new_types.extend([line.strip() for line in f])
+        # problem: new_types may overlap with existing types
+        new_types.extend(read_new_types(args.new_types, args.original))
     else:
         new_types.extend(indices2dsus(range(args.n_new_dsus), args.dsu_format))
 

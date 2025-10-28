@@ -20,7 +20,26 @@ task ExtendTokenizer
         --hf_instruct $tokenizer_instruct
 }
 
+task ExtendTokenizerWithBPE
+    > tokenizer_base
+    > tokenizer_instruct
+    :: n_dsus=@
+    :: base_model=@
+    :: dsu_bpe_vocab=@
+    :: repo=@
+{
+    # So far, this should only work with sentencepiece-backed tokenizers
+    # dsu_bpe_vocab should be defined in the uservars, as it expects a path
+    # on the user's machine
 
+    python $repo/scripts/extend_spm.py \
+        --original $base_model \
+        --new_types $dsu_bpe_vocab \
+        --new_specials "<CLS>,<EOD>,<MASK>,<PAD>,<SEP>" \
+        --spm_prefix tmp \
+        --hf_base $tokenizer_base \
+        --hf_instruct $tokenizer_instruct
+}
 
 task ExtendModel
     < tokenizer=$tokenizer_base@ExtendTokenizer
@@ -30,12 +49,6 @@ task ExtendModel
     :: repo=@
 {
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--model-path")
-    # parser.add_argument("--out-dir")
-    # parser.add_argument("--new-tokenizer", help="path to spm model")
-    # parser.add_argument("--init-strategy", default="default", choices=["default", "mean"])
-    # parser.add_argument("--pad-multiple", type=int, default=64)
     python $repo/scripts/extend_model.py \
         --model-path $base_model \
         --init-strategy $init_strategy \
@@ -44,10 +57,31 @@ task ExtendModel
         --out-dir $extended_model
 }
 
+task ExtendModelWithBPE
+    < tokenizer=$tokenizer_base@ExtendTokenizerWithBPE
+    > extended_model=extended_model
+    :: base_model=@
+    :: init_strategy=@
+    :: repo=@
+{
+
+    python $repo/scripts/extend_model.py \
+        --model-path $base_model \
+        --init-strategy $init_strategy \
+        --new-tokenizer $tokenizer \
+        --pad-multiple 64 \
+        --out-dir $extended_model
+}
+
+
 plan PuaTokenizers {
     reach ExtendTokenizer
 }
 
 plan Extend {
     reach ExtendModel via (BaseModel: *)
+}
+
+plan ExtendBPE {
+    reach ExtendModelWithBPE via (BaseModel: towerbase_7B)
 }
