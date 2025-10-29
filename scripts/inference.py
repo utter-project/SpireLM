@@ -16,8 +16,7 @@ def _generate_vllm(prompts, model, args):
     stops.extend(['\\n', '\n', "<END>"])
 
     sampling_args = {
-        "use_beam_search": args.beam_size > 1,
-        "best_of": args.beam_size,
+        "best_of": 1,
         "n": 1,
         "temperature": args.temperature,
         "max_tokens": args.max_length,

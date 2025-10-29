@@ -10,7 +10,10 @@ requirements = [
     "vllm>=0.11.0",
     "protobuf>=5.29.3",
     "scikit-learn>=1.3.2",
-    "librosa>=0.10.2.post1"
+    "librosa>=0.10.2.post1",
+    "whisper-normalizer>=0.0.8",
+    "evaluate>=0.4.2",
+    "jiwer>=4.0.0"
 ]
 
 setup(name='SpireLM',
