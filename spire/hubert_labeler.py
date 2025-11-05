@@ -22,32 +22,6 @@ class Featurizer(nn.Module):
         feats = self.model(batch, attention_mask=attention_mask).last_hidden_state
         return feats
 
-    def predict(self, batch, attention_mask=None):
-        dist = self(batch, attention_mask=attention_mask)
-        labels = dist.argmin(dim=-1)
-
-        # what's feats.shape[1]? It's the length dimension, so it should be
-        # dist.shape[1] as well
-        if attention_mask is not None:
-            output_mask = self.model._get_feature_vector_attention_mask(dist.shape[1], attention_mask)
-            labels.masked_fill_(~output_mask, -1)
-        return labels
-
-    def label_wav(self, wav_path, **detok_args):
-        # read the audio into a batch
-        device = self.kmeans.C.device
-        batch = load_wav(
-            wav_path, device=device, expected_sample_rate=16000
-        )
-
-        # call self.predict (no attention mask because it's a single-element batch)
-        labels = self.predict(batch)
-
-        # detokenize
-        detokenized_labels = detokenize(labels, **detok_args)
-
-        return detokenized_labels
-
 
 class KMeans(nn.Module):
     """
