@@ -83,5 +83,5 @@ plan Extend {
 }
 
 plan ExtendBPE {
-    reach ExtendModelWithBPE via (BaseModel: towerbase_7B)
+    reach ExtendModelWithBPE via (BaseModel: towerbase_7B eurollm_1_7B eurollm_9B)
 }

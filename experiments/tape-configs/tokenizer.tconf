@@ -14,5 +14,7 @@ global {
         BaseModel:
             towerbase_7B="Unbabel/TowerBase-7B-v0.1"
             qwen3_0_6B="Qwen/Qwen3-0.6B"
+            eurollm_1_7B="utter-project/EuroLLM-1.7B"
+            eurollm_9B="utter-project/EuroLLM-9B"
     )
 }
