@@ -6,30 +6,21 @@ from transformers import HubertModel
 from spire.utils import load_wav, detokenize
 
 
-# this whole thing needs to be refactored, I think. And that's fine.
-# but also, the feature-reading/kmeans could be refactored into a single
-# nn.Module, I think. Pass ckpt_path, layer, and kmeans path. Forward generates
-# scores for each cluster, and you implement a predict method as well that picks
-# the closest cluster.
-class HubertLabeler(nn.Module):
+class Featurizer(nn.Module):
 
-    def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32):
+    def __init__(self, ckpt_path, layer=22, dtype=torch.float32):
         super().__init__()
 
         self.model = HubertModel.from_pretrained(ckpt_path, torch_dtype=dtype)
         self.model.encoder.layer_norm = nn.Identity()  # kludge to avoid applying final layer norm
         self.model.encoder.layers = self.model.encoder.layers[:layer]
 
-        self.kmeans = KMeans(km_path, dtype=dtype)
-
     def forward(self, batch, attention_mask=None):
         """
         Take a batch of inputs, return scores for all V clusters
         """
         feats = self.model(batch, attention_mask=attention_mask).last_hidden_state
-
-        dist = self.kmeans(feats)
-        return dist
+        return feats
 
     def predict(self, batch, attention_mask=None):
         dist = self(batch, attention_mask=attention_mask)
@@ -99,3 +90,55 @@ class KMeans(nn.Module):
         # dist = - 2 * torch.matmul(x, self.C) + self.Cnorm
         return dist
         # return dist.argmin(dim=-1)
+
+
+# this whole thing needs to be refactored, I think. And that's fine.
+# but also, the feature-reading/kmeans could be refactored into a single
+# nn.Module, I think. Pass ckpt_path, layer, and kmeans path. Forward generates
+# scores for each cluster, and you implement a predict method as well that picks
+# the closest cluster.
+class HubertLabeler(nn.Module):
+
+    def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32):
+        super().__init__()
+
+        self.featurizer = Featurizer(ckpt_path, layer=layer, dtype=dtype)
+        self.kmeans = KMeans(km_path, dtype=dtype)
+
+    def forward(self, batch, attention_mask=None):
+        """
+        Take a batch of inputs, return scores for all V clusters
+        """
+
+        feats = self.featurizer(batch, attention_mask=attention_mask)
+        dist = self.kmeans(feats)
+        return dist
+
+    def predict(self, batch, attention_mask=None):
+        dist = self(batch, attention_mask=attention_mask)
+        labels = dist.argmin(dim=-1)
+
+        # what's feats.shape[1]? It's the length dimension, so it should be
+        # dist.shape[1] as well
+        if attention_mask is not None:
+            output_mask = self._get_feature_vector_attention_mask(dist.shape[1], attention_mask)
+            labels.masked_fill_(~output_mask, -1)
+        return labels
+
+    def _get_feature_vector_attention_mask(self, length, attention_mask):
+        return self.featurizer.model._get_feature_vector_attention_mask(length, attention_mask)
+
+    def label_wav(self, wav_path, **detok_args):
+        # read the audio into a batch
+        device = self.kmeans.C.device
+        batch = load_wav(
+            wav_path, device=device, expected_sample_rate=16000
+        )
+
+        # call self.predict (no attention mask because it's a single-element batch)
+        labels = self.predict(batch)
+
+        # detokenize
+        detokenized_labels = detokenize(labels, **detok_args)
+
+        return detokenized_labels
