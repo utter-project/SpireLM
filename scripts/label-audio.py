@@ -23,7 +23,8 @@ def main(args):
         args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype
     )
 
-    labeler = labeler.to(device="cuda")
+    device = "cpu" if args.cpu else "cuda"
+    labeler = labeler.to(device=device)
     labeler.eval()
     if args.compile:
         labeler = torch.compile(labeler)
@@ -47,8 +48,10 @@ def main(args):
             labels = []
             indices = []
             for batch in tqdm(loader, total=n_batches):
-                inp = batch.input_values.to(dtype=dtype, device="cuda")
-                mask = batch.attention_mask.cuda()
+                inp = batch.input_values.to(dtype=dtype, device=device)
+                mask = batch.attention_mask
+                if device == "cuda":
+                    mask = mask.cuda()
                 batch_labels = labeler.predict(batch=inp, attention_mask=mask)
                 detokenized_labels = detokenize(
                     batch_labels,
@@ -92,6 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("--n-examples", type=int, default=0,
                         help="Number of examples to take, starting with start-ix")
     parser.add_argument("--validate-examples", action="store_true")
+    parser.add_argument("--cpu", action="store_true", help="only useful for debugging")
     args = parser.parse_args()
 
     main(args)
