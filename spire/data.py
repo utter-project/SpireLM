@@ -3,7 +3,7 @@ from functools import partial
 
 from tqdm import tqdm
 import soundfile as sf
-from torch.utils.data import Dataset, Sampler, BatchSampler, DataLoader
+from torch.utils.data import Dataset, Sampler, SequentialSampler, RandomSampler, BatchSampler, DataLoader
 from transformers import Wav2Vec2FeatureExtractor
 from datasets import load_from_disk, load_dataset, Audio
 
@@ -73,7 +73,6 @@ class LengthSortedAudioSampler(Sampler):
             yield ex["idx"]
 
 
-# is there any actual reason to inherit?
 class TokenBatchSampler(BatchSampler):
 
     def __init__(self, data: AudioTSVDataset, sampler: Sampler, batch_size: int, drop_last: bool = False):
@@ -162,45 +161,62 @@ def get_valid_indices(dataset):
 def build_dataloader(
         path, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
         n_examples=0, validate_examples=False, path_extra="en", hf_location="disk",
-        hf_split="test", resample_to=None):
+        hf_split="test", resample_to=None, shuffle=False, torch_random=None):
 
     # Build dataset
     if dataset_type == "tsv":
         dataset = AudioTSVDataset(tsv_path=path)
     else:
         dataset = load_hf_audio_dataset(
-            path, path_extra=path_extra, resample_to=resample_to, split=hf_split,
-            from_disk=hf_location == "disk", add_index=True,
-            start_ix=start_ix, n_examples=n_examples
+            path,
+            path_extra=path_extra,
+            resample_to=resample_to,
+            split=hf_split,
+            from_disk=hf_location == "disk",
+            add_index=True,
+            start_ix=start_ix,
+            n_examples=n_examples
         )
 
-    # optionally filter invalid examples
     length_before_validating = len(dataset)
+
+    # optionally filter invalid examples (validation is slow, but some HF speech
+    # corpora include entries with missing audio, so it may be necessary to
+    # check.)
     if validate_examples:
         valid_indices = get_valid_indices(dataset)
         dataset = dataset.select(valid_indices)
+
     print("Dataset lengths:")
     print("Raw: {}\tAfter validating: {}".format(length_before_validating, len(dataset)))
 
-    # Build the loader
+    # build the collator
     feature_extractor = Wav2Vec2FeatureExtractor()
-    if dataset_type == "tsv":
+    collate_func = collate_fn if dataset_type == "tsv" else collate_hf
+    collator = partial(collate_func, feature_extractor=feature_extractor)
+
+    # maybe token batching will become possible with other dataset types
+    uses_token_batching = dataset_type == "tsv"
+
+    if uses_token_batching:
         sampler = LengthSortedAudioSampler(dataset)
         batch_sampler = TokenBatchSampler(dataset, sampler, batch_size)
-        n_batches = len([b for b in batch_sampler])
-        collate_func = collate_fn
-        loader_kwargs = {"batch_sampler": batch_sampler}
     else:
-        n_batches = None
-        collate_func = collate_hf
-        loader_kwargs = {
-            "drop_last": False, "batch_size": batch_size
-        }
-    collator = partial(collate_func, feature_extractor=feature_extractor)
+        sampler = RandomSampler(dataset, generator=torch_random) if shuffle else SequentialSampler(dataset)
+        batch_sampler = BatchSampler(sampler, batch_size=batch_size, drop_last=False)
+
     loader = DataLoader(
-        dataset, num_workers=num_workers, pin_memory=True, collate_fn=collator, **loader_kwargs
+        dataset,
+        num_workers=num_workers,
+        pin_memory=True,
+        collate_fn=collator,
+        batch_sampler=batch_sampler
     )
 
-    if n_batches is None:
+    # count number of batches
+    if uses_token_batching:
+        n_batches = len([b for b in batch_sampler])
+    else:
         n_batches = len(loader)
+
     return loader, n_batches, length_before_validating
