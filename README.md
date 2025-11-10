@@ -46,14 +46,29 @@ TODO: ducttape example
 ## Citation
 If you use Spire, please cite our work:
 ```
-@misc{spire,
-      title={From TOWER to SPIRE: Adding the Speech Modality to a Text-Only LLM}, 
-      author={Kshitij Ambilduke and Ben Peters and Sonal Sannigrahi and Anil Keshwani and Tsz Kin Lam and Bruno Martins and Marcely Zanon Boito and André F. T. Martins},
-      year={2025},
-      eprint={2503.10620},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2503.10620}
+@inproceedings{ambilduke-etal-2025-tower,
+    title = "From Tower to Spire: Adding the Speech Modality to a Translation-Specialist {LLM}",
+    author = "Ambilduke, Kshitij  and
+      Peters, Ben  and
+      Sannigrahi, Sonal  and
+      Keshwani, Anil  and
+      Lam, Tsz Kin  and
+      Martins, Bruno  and
+      Martins, Andre  and
+      Zanon Boito, Marcely",
+    editor = "Christodoulopoulos, Christos  and
+      Chakraborty, Tanmoy  and
+      Rose, Carolyn  and
+      Peng, Violet",
+    booktitle = "Findings of the Association for Computational Linguistics: EMNLP 2025",
+    month = nov,
+    year = "2025",
+    address = "Suzhou, China",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2025.findings-emnlp.1071/",
+    doi = "10.18653/v1/2025.findings-emnlp.1071",
+    pages = "19658--19673",
+    ISBN = "979-8-89176-335-7"
 }
 ```
 
