@@ -28,49 +28,33 @@ class KMeans(nn.Module):
     Adapted from https://github.com/facebookresearch/fairseq/blob/main/examples/hubert/simple_kmeans/dump_km_label.py,
     copyright (c) Facebook, Inc. and its affiliates.
 
-    K-means adapted from fairseq. Note that using the torch backend may
-    (very rarely) produce slightly different cluster assignments than using
-    numpy due to numerical differences.
+    K-means adapted from fairseq. Note that this may produce slightly different
+    cluster assignments than the original numpy-based implementation due to
+    numerical differences. Likewise, changing the dtype can yield marginally
+    different clusters, but empirically this doesn't seem to matter much.
     """
     def __init__(self, km_path, dtype=torch.float32):
         super().__init__()
 
-        # dtype = torch.float32  # hardcode and we cast
-        # load the numpy stuff
         km_model = joblib.load(km_path)
         C = km_model.cluster_centers_.transpose()
         Cnorm = (C ** 2).sum(0, keepdims=True)
 
-        # now make some parameters and load the numpy values into them, I guess
-
-        # device = torch.device(device)
-        # do we need to load the dtype this way? Or should we do it when we
-        # convert the
         self.C = nn.Parameter(torch.from_numpy(C).to(dtype))
         self.Cnorm = nn.Parameter(torch.from_numpy(Cnorm).to(dtype))
 
     def forward(self, x):
         """
-        x: historically len x dim
-        - Change the dimension for sum/argmin to -1
-        - Then it should work for b x len x dim, I hope
+        x: * x dim
         """
-        # x = x.to(self.C.dtype)
         # self.Cnorm is essentially a bias...
-        # version 1:
         dist = x.pow(2).sum(-1, keepdim=True) - 2 * torch.matmul(x, self.C) + self.Cnorm
 
         # version 2:
         # dist = - 2 * torch.matmul(x, self.C) + self.Cnorm
         return dist
-        # return dist.argmin(dim=-1)
 
 
-# this whole thing needs to be refactored, I think. And that's fine.
-# but also, the feature-reading/kmeans could be refactored into a single
-# nn.Module, I think. Pass ckpt_path, layer, and kmeans path. Forward generates
-# scores for each cluster, and you implement a predict method as well that picks
-# the closest cluster.
 class HubertLabeler(nn.Module):
 
     def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32):
@@ -109,7 +93,7 @@ class HubertLabeler(nn.Module):
             wav_path, device=device, expected_sample_rate=16000
         )
 
-        # call self.predict (no attention mask because it's a single-element batch)
+        # no attention mask because it's a single-element batch
         labels = self.predict(batch)
 
         # detokenize
