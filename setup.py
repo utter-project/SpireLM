@@ -13,7 +13,8 @@ requirements = [
     "librosa>=0.10.2.post1",
     "whisper-normalizer>=0.0.8",
     "evaluate>=0.4.2",
-    "jiwer>=4.0.0"
+    "jiwer>=4.0.0",
+    "starlette>=0.49.1"
 ]
 
 setup(name='SpireLM',
