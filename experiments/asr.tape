@@ -120,6 +120,7 @@ task LabelAudio
     :: hubert_dtype=@
     :: asr_dataset=@
     :: asr_path_extra=@
+    :: dpdp_lambda=@
     :: repo=@
 {
     # dataset_path should be defined in the uservars file
@@ -136,7 +137,8 @@ task LabelAudio
         --layer $hubert_layer \
         --km_path $km_model \
         --batch-size 4 \
-        --dtype $hubert_dtype
+        --dtype $hubert_dtype \
+        --dpdp-lambda $dpdp_lambda
 }
 
 # obsolete, but not deleting just yet
