@@ -341,10 +341,18 @@ plan LabelizeNew {
     reach LabelAudioNew via (ASRDataset: *)
 }
 
+plan LabelizeDPDPFleurs {
+    reach LabelAudio via (ASRDataset: fleurs) * (DPDPLambda: 5000 10000 100000)
+}
+
 ##### Hypothesis Generation #####
 
 plan DecodeAll {
     reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *)
+}
+
+plan DecodeFleursDPDP {
+    reach Decode via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *) * (DPDPLambda: 5000 10000 100000)
 }
 
 plan DecodeSpireFull {
@@ -371,6 +379,10 @@ plan DecodeWh {
 
 plan ComputeWERAll {
     reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *)
+}
+
+plan ComputeWERFleursDPDP {
+    reach ComputeWER via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *) * (DPDPLambda: 5000 10000 100000)
 }
 
 plan ComputeWERSpireFull {

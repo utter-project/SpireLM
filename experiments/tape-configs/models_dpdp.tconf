@@ -1,0 +1,32 @@
+global {
+    text2text_model=(
+        Text2TextModel:
+            spite_v2_all="/mnt/scratch-artemis/bpop/models-from-mn5/v2-all/checkpoint-11196/"
+    )
+
+    text2text_tokenizer=(
+        Text2TextModel:
+            spite_v2_all="/mnt/scratch-artemis/bpop/models-from-mn5/v2-all/checkpoint-11196/"
+    )
+
+    speech2text_model=(
+        Speech2TextModel:
+            spite_v2_all="/mnt/scratch-artemis/bpop/models-from-mn5/v2-all/checkpoint-11196/"
+    )
+
+    speech2text_tokenizer=(
+        Speech2TextModel:
+            spite_v2_all="/mnt/scratch-artemis/bpop/models-from-mn5/v2-all/checkpoint-11196/"
+    )
+
+    seamless_batch_size=16
+    whisper_batch_size=32
+
+    speech_to_text_backend=vllm
+
+    text_to_text_backend=vllm
+
+    input_format=json
+    text_input_format=json
+    batch_size=1
+}

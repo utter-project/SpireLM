@@ -1,0 +1,15 @@
+global {
+    ducttape_output=/mnt/scratch-artemis/bpop/SpireLM/experiments/asr-dpdp-outputs
+    repo=/mnt/data-artemis/bpop/SpireLM
+
+        asr_dataset=(
+            ASRDataset:
+                ls_clean="/mnt/scratch-artemis/shared/datasets/openslr/librispeech_asr"
+                ls_other="/mnt/scratch-artemis/shared/datasets/openslr/librispeech_asr"
+                fleurs="/mnt/scratch-artemis/shared/datasets/google/fleurs/"
+                voxpopuli="/mnt/scratch-artemis/shared/datasets/facebook/voxpopuli"
+        )
+
+    # annoyingly, things break when I get rid of this
+    commonvoice_path=/mnt/scratch-artemis/shared/datasets/mozilla-foundation/common_voice_16_1
+}
