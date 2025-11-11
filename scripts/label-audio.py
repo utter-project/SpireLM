@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torch
 
 from spire.utils import detokenize
-from spire.hubert_labeler import HubertLabeler
+from spire.hubert_labeler import HubertLabeler, DPDPHubertLabeler
 from spire.data import build_dataloader
 
 
@@ -19,9 +19,14 @@ def main(args):
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
 
-    labeler = HubertLabeler(
-        args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype
-    )
+    if args.dpdp_lambda > 0:
+        labeler = DPDPHubertLabeler(
+            args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype, lmbda=args.dpdp_lambda
+        )
+    else:
+        labeler = HubertLabeler(
+            args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype
+        )
 
     device = "cpu" if args.cpu else "cuda"
     labeler = labeler.to(device=device)
@@ -96,6 +101,7 @@ if __name__ == "__main__":
                         help="Number of examples to take, starting with start-ix")
     parser.add_argument("--validate-examples", action="store_true")
     parser.add_argument("--cpu", action="store_true", help="only useful for debugging")
+    parser.add_argument("--dpdp-lambda", type=float, default=0.)
     args = parser.parse_args()
 
     main(args)

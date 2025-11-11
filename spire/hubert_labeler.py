@@ -100,3 +100,48 @@ class HubertLabeler(nn.Module):
         detokenized_labels = detokenize(labels, **detok_args)
 
         return detokenized_labels
+
+
+class DPDPHubertLabeler(nn.Module):
+
+    def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32, lmbda=0.):
+        super().__init__()
+        # featurizer is the same as for vanilla Hubert labels.
+        self.featurizer = Featurizer(ckpt_path, layer=layer, dtype=dtype)
+
+        # the quantizer wants it [T x D], whereas KMeans.C is [D x T]
+        codebook = KMeans(km_path, dtype=dtype).C.T
+
+        self.quantizer = torch.hub.load(
+            "nicolvisser/dpdp",
+            "dpdp_quantizer_from_codebook",
+            codebook=codebook,
+            lmbda=lmbda, # <- control coarseness here
+            num_neighbors=None,  # not sure if this makes a difference here
+            trust_repo=True,
+            force_reload=False
+        )
+
+    # there will probably be room for some inheritance
+    def forward(self, batch, attention_mask=None):
+        """
+        Take a batch of inputs, return scores for all V clusters
+        """
+
+        feats = self.featurizer(batch, attention_mask=attention_mask)
+        # the quantizer does not support batching, so we do this in a comprehension
+        predictions = torch.stack(
+            [self.quantizer(feats_i)[1] for feats_i in feats]
+        )
+        return predictions
+
+    def predict(self, batch, attention_mask=None):
+        labels = self(batch, attention_mask=attention_mask)
+
+        if attention_mask is not None:
+            output_mask = self._get_feature_vector_attention_mask(labels.shape[1], attention_mask)
+            labels.masked_fill_(~output_mask, -1)
+        return labels
+
+    def _get_feature_vector_attention_mask(self, length, attention_mask):
+        return self.featurizer.model._get_feature_vector_attention_mask(length, attention_mask)
