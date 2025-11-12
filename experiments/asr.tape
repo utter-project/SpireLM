@@ -141,6 +141,42 @@ task LabelAudio
         --dpdp-lambda $dpdp_lambda
 }
 
+task LabelAudioDupe
+    > dsus=dsu.txt
+    :: hubert_model=@
+    :: hubert_layer=@
+    :: km_model=@
+    :: hubert_dtype=@
+    :: asr_dataset=@
+    :: asr_path_extra=@
+    :: repo=@
+{
+    # todo: add drop-p
+    python $repo/scripts/label-audio.py \
+        --tsv_path $asr_dataset \
+        --dataset-type "hf-disk" \
+        --path-extra $asr_path_extra \
+        --hf-split test \
+        --out_path $dsus \
+        --ckpt_path $hubert_model \
+        --layer $hubert_layer \
+        --km_path $km_model \
+        --batch-size 4 \
+        --dtype $hubert_dtype \
+        --no-dedup
+
+}
+
+task DropTokens
+    < dsus_dupe=$dsus@LabelAudioDupe
+    > dsus=dsu.txt
+    :: drop_seed=@
+    :: drop_p=@
+    :: repo=@
+{
+    cat $dsus_dupe | python $repo/scripts/drop_tokens.py --seed $drop_seed --p $drop_p | python $repo/scripts/deduplicate.py > $dsus
+}
+
 # obsolete, but not deleting just yet
 task LabelAudioFromTSV
     < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
@@ -161,26 +197,6 @@ task LabelAudioFromTSV
         --dtype $hubert_dtype
 }
 
-task LabelAudioDupe
-    < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
-    > dsus=dsu.txt
-    :: hubert_model=@
-    :: hubert_layer=@
-    :: km_model=@
-    :: hubert_dtype=@
-    :: repo=@
-{
-    python $repo/scripts/label-audio.py \
-        --tsv_path $wav_tsv \
-        --out_path $dsus \
-        --ckpt_path $hubert_model \
-        --layer $hubert_layer \
-        --km_path $km_model \
-        --batch-size 1000000 \
-        --dtype $hubert_dtype \
-        --no-dedup
-}
-
 task BuildInstructions
     < test_dsus=$dsus@LabelAudio
     > instructions=instructions.json
@@ -199,6 +215,41 @@ task BuildInstructions
 
 task Decode
     < instructions=@BuildInstructions
+    > hyps=hyps.txt
+    :: speech2text_model=@
+    :: speech2text_tokenizer=@
+    :: max_tokens=@
+    :: backend=@
+    :: repo=@
+{
+    python $repo/scripts/inference.py \
+        --inpaths $instructions \
+        --outpaths $hyps \
+        --model $speech2text_model \
+        --tokenizer $speech2text_tokenizer \
+        --backend $backend \
+        --max-length $max_tokens
+
+}
+
+task BuildInstructionsDrop
+    < test_dsus=$dsus@DropTokens
+    > instructions=instructions.json
+    :: template=@
+    :: speech2text_tokenizer=@
+    :: repo=@
+{
+    # template, language pair, number of shots
+    python $repo/scripts/build_instructions.py \
+        --src $test_dsus \
+        --template $template \
+        --n-shots 0 \
+        --chat-tokenizer $speech2text_tokenizer \
+        --out $instructions
+}
+
+task DecodeDrop
+    < instructions=@BuildInstructionsDrop
     > hyps=hyps.txt
     :: speech2text_model=@
     :: speech2text_tokenizer=@
@@ -283,6 +334,15 @@ task NormalizeHyps
     python $repo/scripts/normalize.py --normalizer $normalizer < $hyps > $hyps_normalized
 }
 
+task NormalizeHypsDrop
+    < hyps=@DecodeDrop
+    > hyps_normalized=hyps.txt.norm
+    :: normalizer=@
+    :: repo=@
+{
+    python $repo/scripts/normalize.py --normalizer $normalizer < $hyps > $hyps_normalized
+}
+
 task NormalizeRefs
     < references=@DumpASRText
     > refs_normalized=refs.txt.norm
@@ -294,6 +354,15 @@ task NormalizeRefs
 
 task ComputeWER
     < hyps_normalized=@NormalizeHyps
+    < refs_normalized=@NormalizeRefs
+    > results=wer.json
+    :: repo=@
+{
+    python $repo/scripts/compute_wer.py --hyp $hyps_normalized --ref $refs_normalized > $results
+}
+
+task ComputeWERDrop
+    < hyps_normalized=@NormalizeHypsDrop
     < refs_normalized=@NormalizeRefs
     > results=wer.json
     :: repo=@
@@ -342,7 +411,15 @@ plan LabelizeNew {
 }
 
 plan LabelizeDPDPFleurs {
-    reach LabelAudio via (ASRDataset: fleurs) * (DPDPLambda: 5000 10000 100000)
+    reach LabelAudio via (ASRDataset: fleurs) * (DPDPLambda: 5000 10000 100000 50000)
+}
+
+plan LabelizeDPDP {
+    reach LabelAudio via (ASRDataset: *) * (DPDPLambda: 5000 10000 100000 50000)
+}
+
+plan LabelizeDrop {
+    reach DropTokens via (ASRDataset: *) * (Drop: *)
 }
 
 ##### Hypothesis Generation #####
@@ -351,8 +428,20 @@ plan DecodeAll {
     reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *)
 }
 
+plan DecodeDPDP {
+    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *) * (DPDPLambda: 5000 10000 100000 50000)
+}
+
+plan DecodeDrop {
+    reach DecodeDrop via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *) * (Drop: *)
+}
+
 plan DecodeFleursDPDP {
-    reach Decode via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *) * (DPDPLambda: 5000 10000 100000)
+    reach Decode via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *) * (DPDPLambda: 5000 10000 100000 50000)
+}
+
+plan DecodeVoxDPDP {
+    reach Decode via (ASRDataset: voxpopuli) * (ModelFamily: tower) * (Speech2TextModel: *) * (DPDPLambda: 5000 10000 100000 50000)
 }
 
 plan DecodeSpireFull {
@@ -381,8 +470,20 @@ plan ComputeWERAll {
     reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *)
 }
 
+plan ComputeWERAllDrop {
+    reach ComputeWERDrop via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *) * (Drop: *)
+}
+
+plan ComputeWERDPDP {
+    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *) * (DPDPLambda: 5000 10000 100000 50000)
+}
+
 plan ComputeWERFleursDPDP {
-    reach ComputeWER via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *) * (DPDPLambda: 5000 10000 100000)
+    reach ComputeWER via (ASRDataset: fleurs) * (ModelFamily: tower) * (Speech2TextModel: *) * (DPDPLambda: 5000 10000 100000 50000)
+}
+
+plan ComputeWERVoxDPDP {
+    reach ComputeWER via (ASRDataset: voxpopuli) * (ModelFamily: tower) * (Speech2TextModel: *) * (DPDPLambda: 5000 10000 100000 50000)
 }
 
 plan ComputeWERSpireFull {

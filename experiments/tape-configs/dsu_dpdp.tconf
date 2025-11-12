@@ -7,5 +7,5 @@ global {
 
     # dsu_format=(DSUFormat: extra_id pua)
 
-    dpdp_lambda=(DPDPLambda: 0 5000 10000 100000)
+    dpdp_lambda=(DPDPLambda: 0 5000 10000 100000 50000)
 }
