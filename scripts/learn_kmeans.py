@@ -78,7 +78,6 @@ def main(args):
 
                 batch_frames = features.shape[0]
                 batch_hours = mask.sum().item() / (args.resample_to * 3600)
-                print("This batch:", batch_frames, batch_hours, inp_batch_hours)
 
                 frame_count += batch_frames
 
