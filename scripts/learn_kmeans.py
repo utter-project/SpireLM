@@ -53,7 +53,6 @@ def main(args):
 
     kmeans = MiniBatchKMeans(
         n_clusters=args.n_clusters,
-        # batch_size=args.kmeans_internal_batch,
         random_state=args.seed,
         verbose=1,
         compute_labels=False
@@ -65,38 +64,41 @@ def main(args):
     n_hours = 0.
 
     with torch.no_grad():
-        # here, we need to change what is being iterated over...or do we?
-        for batch in tqdm(loader, total=n_batches):
-            inp = batch.input_values.to(dtype=dtype, device=device)
-            mask = batch.attention_mask
-            if device == "cuda":
-                mask = mask.cuda()
-            features = featurizer(batch=inp, attention_mask=mask)
-            # what do you do about the fact that some of the features are for
-            # padding positions?
+        with tqdm(total=args.max_hours) as pbar:
+            for batch in loader:
+                inp = batch.input_values.to(dtype=dtype, device=device)
+                # inp_batch_hours = inp.shape[1] / (16000 * 3600)
 
-            # -- you have a batch x seq_len mask on the features
+                mask = batch.attention_mask
+                if device == "cuda":
+                    mask = mask.cuda()
+                features = featurizer(batch=inp, attention_mask=mask, flatten=True)
+                # flatten=True removes padding positions
 
-            # features is...batch x seq_len x D? I believe so
-            # for now, I don't know how to think about batching here
-            features_np = features.view(-1, features.size(-1)).cpu().numpy()
+                kmeans_buffer.append(features.cpu().numpy())
 
-            kmeans_buffer.append(features_np)
-            frame_count += features_np.shape[0]
-            print(frame_count)
+                batch_frames = features.shape[0]
+                batch_hours = mask.sum().item() / (args.resample_to * 3600)
+                print("This batch:", batch_frames, batch_hours, inp_batch_hours)
 
-            # approximate batch size...
-            if frame_count >= kmeans_batch:
-                kmeans.partial_fit(np.vstack(kmeans_buffer))
-                kmeans_buffer = []
+                frame_count += batch_frames
 
-                # update n_hours
-                # depends on frame_count, output sampling rate of model (can be inferred programmatically?)
+                # update hours seen
+                n_hours += batch_hours
 
-                # if it can't be inferred programmatically, it's better to compute
-                # it from inp (or...can it be made part of the data loading?)
+                # approximate batch size...
 
-                frame_count = 0
+                if frame_count >= kmeans_batch or n_hours >= args.max_hours:
+                    print("running partial fit")
+                    # second disjunct is so that
+                    kmeans.partial_fit(np.vstack(kmeans_buffer))
+                    kmeans_buffer = []
+                    frame_count = 0
+
+                pbar.update(batch_hours)
+
+                if n_hours >= args.max_hours:
+                    break
 
     # save model
     joblib.dump(kmeans, args.out_path)
@@ -104,15 +106,11 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # parser.add_argument("--ssl-model", default="facebook/w2v-bert-2.0")
-    parser.add_argument("--ssl-model", default="facebook/hubert-large-ll60k")
+    parser.add_argument("--ssl-model", default="facebook/hubert-large-ll60k",
+                        help="also try others like facebook/w2v-bert-2.0")
     parser.add_argument("--layer", type=int, default=22)
-    # parser.add_argument("--data-path", default="/cfs/collections/voxpopuli/unlabelled_data/pt")
     parser.add_argument("--data-path", default="google/fleurs")
     parser.add_argument("--n-clusters", type=int, default=5000)
-    parser.add_argument("--kmeans-internal-batch", type=int, default=2048)
-    # parser.add_argument("--target-sampling-rate", type=int, default=16000)
-    parser.add_argument("--kmeans-accum-rows", type=int, default=8192)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--torch-seed", type=int, default=43)
     parser.add_argument("--out-path", default="kmeans.joblib")
@@ -130,7 +128,7 @@ if __name__ == "__main__":
                         help="For slicing an HF dataset (start index in the corpus)")
     parser.add_argument("--n-examples", type=int, default=0,
                         help="Number of examples to take, starting with start-ix")
-    parser.add_argument("--max-hours", type=float, default=None,
+    parser.add_argument("--max-hours", type=float, default=1000.,
                         help="""If specified, number of hours to train
                              clustering on (otherwise uses whole dataset)""")
     parser.add_argument("--validate-examples", action="store_true")

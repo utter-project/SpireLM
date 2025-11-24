@@ -15,12 +15,26 @@ class Featurizer(nn.Module):
         self.model.encoder.layer_norm = nn.Identity()  # kludge to avoid applying final layer norm
         self.model.encoder.layers = self.model.encoder.layers[:layer]
 
-    def forward(self, batch, attention_mask=None):
+    def _get_feature_vector_attention_mask(self, length, attention_mask):
+        return self.model._get_feature_vector_attention_mask(length, attention_mask)
+
+    def forward(self, batch, attention_mask=None, flatten=False):
         """
         Take a batch of inputs, return scores for all V clusters
+        If flatten == False, return batch x seq_len x D
+        If flatten == True, return
         """
         feats = self.model(batch, attention_mask=attention_mask).last_hidden_state
-        return feats
+        if not flatten:
+            return feats
+
+        assert attention_mask is not None
+
+        output_mask = self._get_feature_vector_attention_mask(feats.shape[1], attention_mask)
+        flattened_feats = feats.view(-1, feats.shape[-1])
+        flattened_output_mask = output_mask.view(-1)
+
+        return flattened_feats[flattened_output_mask]
 
 
 class KMeans(nn.Module):
