@@ -67,7 +67,6 @@ def main(args):
         with tqdm(total=args.max_hours) as pbar:
             for batch in loader:
                 inp = batch.input_values.to(dtype=dtype, device=device)
-                # inp_batch_hours = inp.shape[1] / (16000 * 3600)
 
                 mask = batch.attention_mask
                 if device == "cuda":
