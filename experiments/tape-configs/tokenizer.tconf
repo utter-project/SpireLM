@@ -16,5 +16,9 @@ global {
             qwen3_0_6B="Qwen/Qwen3-0.6B"
             eurollm_1_7B="utter-project/EuroLLM-1.7B"
             eurollm_9B="utter-project/EuroLLM-9B"
+            lmt_0_6B="NiuTrans/LMT-60-0.6B-Base"
+            lmt_1_7B="NiuTrans/LMT-60-1.7B-Base"
+            lmt_4B="NiuTrans/LMT-60-4B-Base"
+            lmt_8B="NiuTrans/LMT-60-8B-Base"
     )
 }
