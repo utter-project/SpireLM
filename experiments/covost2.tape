@@ -332,7 +332,7 @@ plan Evaluation {
 }
 
 plan EvaluationLMT {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_0_6B_v2_all lmt_1_7B_v2_all_5200 lmt_4B_v2_all_2400 lmt_4B_v2_all_4400 lmt_1_7B_v2_all lmt_4B_v2_all_5600 lmt_4B_v2_all_8400 lmt_8B_v2_all_2800 lmt_4B_v2_all lmt_8B_v2_all_6400) * (LanguagePair: en_de en_zh)
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_0_6B_v2_all lmt_1_7B_v2_all_5200 lmt_4B_v2_all_2400 lmt_4B_v2_all_4400 lmt_1_7B_v2_all lmt_4B_v2_all_5600 lmt_4B_v2_all_8400 lmt_8B_v2_all_2800 lmt_4B_v2_all lmt_8B_v2_all_6400 lmt_8B_v2_all tower_v2_all) * (LanguagePair: en_de en_zh)
 }
 
 ##### Cascaded ST and ASR plans #####
