@@ -10,6 +10,12 @@ from spire.hubert_labeler import Featurizer
 from spire.data import build_dataloader
 
 
+"""
+Replace this with something else; we need to separate the featurization from
+the kmeans learning (following fairseq/espnet)
+"""
+
+
 def main(args):
 
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
