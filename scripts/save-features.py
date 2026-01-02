@@ -17,7 +17,7 @@ def main(args):
 
     device = "cpu" if args.cpu else "cuda"
 
-    torch_random = torch.Generator(device=device)
+    torch_random = torch.Generator(device="cpu")  # DataLoader always uses CPU
     torch_random.manual_seed(args.torch_seed)
 
     featurizer = Featurizer(args.ssl_model, layer=args.layer, dtype=dtype)
@@ -29,7 +29,7 @@ def main(args):
 
     loader, n_batches, raw_length = build_dataloader(
         path=args.data_path,
-        batch_size=args.ssl_batch_size,
+        batch_size=args.batch_size,
         num_workers=args.num_workers,
         dataset_type=args.dataset_type,
         start_ix=args.start_ix,
@@ -40,12 +40,16 @@ def main(args):
         resample_to=args.resample_to,
         hf_location="disk" if args.dataset_type == "hf-disk" else "cache",
         shuffle=True,
-        torch_random=torch_random
+        torch_random=torch_random,
+        pin_memory=not args.cpu
     )
 
     # I think I don't need to use AutoFeatureExtractor here. The spire data
     # code should apply the Wav2Vec2FeatureExtractor, which as far as I know is
     # appropriate (but we can revisit this if it turns out to be wrong).
+
+    # (however, I should change this later when I make the code extensible)
+
     # processor = AutoFeatureExtractor.from_pretrained(args.ssl_model)
     # model = Wav2Vec2BertModel.from_pretrained(args.ssl_model).to(device)
     # model.eval()
@@ -67,7 +71,16 @@ def main(args):
                 mask = batch.attention_mask
                 if device == "cuda":
                     mask = mask.cuda()
-                features = featurizer(batch=inp, attention_mask=mask, flatten=True)
+
+                # reminder: featurizer is essentially the forward of a HubertModel,
+                # but with some layers cut off (is there a more elegant way to
+                # do this inside HF?)
+                features, pad_percent = featurizer(
+                    batch=inp,
+                    attention_mask=mask,
+                    flatten=True,
+                    return_pad_percent=True
+                )
                 # flatten=True removes padding positions
                 batch_frames = features.shape[0]
                 batch_hours = mask.sum().item() / (args.resample_to * 3600)
@@ -97,10 +110,9 @@ if __name__ == "__main__":
                         help="also try others like facebook/w2v-bert-2.0")
     parser.add_argument("--layer", type=int, default=22)
     parser.add_argument("--data-path", default="google/fleurs")
-    parser.add_argument("--n-clusters", type=int, default=5000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--torch-seed", type=int, default=43)
-    parser.add_argument("--ssl-batch-size", type=int, default=1)
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--num-workers", type=int, default=1)
     parser.add_argument("--dtype", default="fp32", choices=["fp32", "bf16"])
     parser.add_argument("--compile", action="store_true")

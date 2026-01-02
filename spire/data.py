@@ -161,7 +161,7 @@ def get_valid_indices(dataset):
 def build_dataloader(
         path, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
         n_examples=0, validate_examples=False, path_extra="en", hf_location="disk",
-        hf_split="test", resample_to=None, shuffle=False, torch_random=None):
+        hf_split="test", resample_to=None, shuffle=False, torch_random=None, pin_memory=False):
 
     # Build dataset
     if dataset_type == "tsv":
@@ -208,7 +208,7 @@ def build_dataloader(
     loader = DataLoader(
         dataset,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=pin_memory,
         collate_fn=collator,
         batch_sampler=batch_sampler
     )

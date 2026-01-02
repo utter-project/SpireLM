@@ -18,7 +18,7 @@ class Featurizer(nn.Module):
     def _get_feature_vector_attention_mask(self, length, attention_mask):
         return self.model._get_feature_vector_attention_mask(length, attention_mask)
 
-    def forward(self, batch, attention_mask=None, flatten=False):
+    def forward(self, batch, attention_mask=None, flatten=False, return_pad_percent=False):
         """
         Take a batch of inputs, return scores for all V clusters
         If flatten == False, return batch x seq_len x D
@@ -34,7 +34,15 @@ class Featurizer(nn.Module):
         flattened_feats = feats.view(-1, feats.shape[-1])
         flattened_output_mask = output_mask.view(-1)
 
-        return flattened_feats[flattened_output_mask]
+        non_pad_feats = flattened_feats[flattened_output_mask]
+
+        if not return_pad_percent:
+            return non_pad_feats
+
+        n_before_flat = flattened_feats.shape[0]
+        n_after_flat = non_pad_feats.shape[0]
+
+        return non_pad_feats, 1 - n_after_flat / n_before_flat
 
 
 class KMeans(nn.Module):
