@@ -85,7 +85,7 @@ def main(args):
                 batch_frames = features.shape[0]
                 batch_hours = mask.sum().item() / (args.resample_to * 3600)
 
-                feat_f.append(features.cpu().numpy())
+                feat_f.append(features.cpu().float().numpy())
 
                 shard_frames += batch_frames
 
