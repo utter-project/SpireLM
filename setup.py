@@ -14,7 +14,8 @@ requirements = [
     "whisper-normalizer>=0.0.8",
     "evaluate>=0.4.2",
     "jiwer>=4.0.0",
-    "starlette>=0.49.1"
+    "starlette>=0.49.1",
+    "npy-append-array>=0.9.19"
 ]
 
 setup(name='SpireLM',
@@ -22,7 +23,7 @@ setup(name='SpireLM',
       description='LLM for speech and text tasks',
       author='Ben Peters',
       author_email='benzurdopeters@gmail.com',
-      url='nunya',
+      url='https://github.com/utter-project/SpireLM',
       packages=['spire'],
       install_requires=requirements,
       license="MIT"
