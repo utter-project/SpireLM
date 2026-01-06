@@ -159,7 +159,7 @@ def get_valid_indices(dataset):
 
 
 def build_dataloader(
-        path, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
+        path, feature_extractor, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
         n_examples=0, validate_examples=False, path_extra="en", hf_location="disk",
         hf_split="test", resample_to=None, shuffle=False, torch_random=None, pin_memory=False):
 
@@ -191,7 +191,7 @@ def build_dataloader(
     print("Raw: {}\tAfter validating: {}".format(length_before_validating, len(dataset)))
 
     # build the collator
-    feature_extractor = Wav2Vec2FeatureExtractor()
+    # feature_extractor = Wav2Vec2FeatureExtractor()
     collate_func = collate_fn if dataset_type == "tsv" else collate_hf
     collator = partial(collate_func, feature_extractor=feature_extractor)
 

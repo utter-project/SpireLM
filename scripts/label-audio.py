@@ -2,6 +2,7 @@ import argparse
 from tqdm import tqdm
 
 import torch
+from transformers import AutoFeatureExtractor
 
 from spire.utils import detokenize
 from spire.hubert_labeler import HubertLabeler
@@ -22,6 +23,7 @@ def main(args):
     labeler = HubertLabeler(
         args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype
     )
+    feature_extractor = AutoFeatureExtractor.from_pretrained(args.ckpt_path)
 
     device = "cpu" if args.cpu else "cuda"
     labeler = labeler.to(device=device)
@@ -31,6 +33,7 @@ def main(args):
 
     loader, n_batches, raw_length = build_dataloader(
         path=args.tsv_path,
+        feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         dataset_type=args.dataset_type,

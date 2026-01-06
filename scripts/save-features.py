@@ -4,6 +4,7 @@ from os.path import join
 
 from tqdm import tqdm
 import torch
+from transformers import AutoFeatureExtractor
 from npy_append_array import NpyAppendArray
 
 from spire.hubert_labeler import Featurizer
@@ -20,6 +21,8 @@ def main(args):
     torch_random = torch.Generator(device="cpu")  # DataLoader always uses CPU
     torch_random.manual_seed(args.torch_seed)
 
+    feature_extractor = AutoFeatureExtractor.from_pretrained(args.ssl_model)
+
     featurizer = Featurizer(args.ssl_model, layer=args.layer, dtype=dtype)
 
     featurizer = featurizer.to(device=device)
@@ -29,6 +32,7 @@ def main(args):
 
     loader, n_batches, raw_length = build_dataloader(
         path=args.data_path,
+        feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         dataset_type=args.dataset_type,
