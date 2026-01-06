@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import joblib
-from transformers import HubertModel
+from transformers import AutoModel, HubertModel, Wav2Vec2BertModel
 
 from spire.utils import load_wav, detokenize
 
@@ -11,9 +11,18 @@ class Featurizer(nn.Module):
     def __init__(self, ckpt_path, layer=22, dtype=torch.float32):
         super().__init__()
 
-        self.model = HubertModel.from_pretrained(ckpt_path, torch_dtype=dtype)
-        self.model.encoder.layer_norm = nn.Identity()  # kludge to avoid applying final layer norm
-        self.model.encoder.layers = self.model.encoder.layers[:layer]
+        self.model = AutoModel.from_pretrained(ckpt_path, torch_dtype=dtype)
+
+        if isinstance(self.model, HubertModel):
+            self.model.encoder.layer_norm = nn.Identity()  # kludge to avoid applying final layer norm
+            self.model.encoder.layers = self.model.encoder.layers[:layer]
+        elif isinstance(self.model, Wav2Vec2BertModel):
+            # I *think* this is the way to go for getting SSL features from a
+            # w2v model
+            self.model.encoder.layers = self.model.encoder.layers[:layer]
+            self.model.encoder.layers[-1].final_layer_norm = nn.Identity()
+        else:
+            raise ValueError("Unknown SSL architecture")
 
     def _get_feature_vector_attention_mask(self, length, attention_mask):
         return self.model._get_feature_vector_attention_mask(length, attention_mask)
