@@ -46,12 +46,14 @@ def main(args):
         hf_location="disk" if args.dataset_type == "hf-disk" else "cache"
     )
 
+    input_field_name = feature_extractor.model_input_names[0]
+
     with open(args.out_path, "w") as f:
         with torch.no_grad():
             labels = []
             indices = []
             for batch in tqdm(loader, total=n_batches):
-                inp = batch.input_values.to(dtype=dtype, device=device)
+                inp = batch[input_field_name].to(dtype=dtype, device=device)
                 mask = batch.attention_mask
                 if device == "cuda":
                     mask = mask.cuda()
