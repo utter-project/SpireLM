@@ -43,6 +43,7 @@ def collate_fn(inputs, feature_extractor):
         return_attention_mask=True
     )
     batch["indices"] = [inp["idx"] for inp in inputs]
+    batch["seconds"] = [audio.shape[0] / feature_extractor.sampling_rate for audio in audios]
     return batch
 
 
@@ -56,6 +57,7 @@ def collate_hf(inputs, feature_extractor):
         return_attention_mask=True
     )
     batch["indices"] = [inp["idx"] for inp in inputs]
+    batch["seconds"] = [audio.shape[0] / feature_extractor.sampling_rate for audio in audios]
     return batch
 
 
