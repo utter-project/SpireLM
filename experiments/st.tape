@@ -21,8 +21,33 @@ task FetchFlores
     python $repo/scripts/hf2text.py --dev $dev --devtest $devtest
 }
 
+task FetchFloresExtra
+    > dev=dev
+    > devtest=devtest
+    :: flores_path=@
+    :: repo=@
+{
+    python $repo/scripts/hf2text.py --dev $dev --devtest $devtest \
+        --langs eng_Latn ell_Grek hrv_Latn hun_Latn jpn_Jpan pol_Latn swe_Latn tur_Latn
+}
+
 task RecoverReferencesFleurs
     < devtest=@FetchFlores
+    < gold_src=$gold@DumpSTGoldTranscriptions
+    > references=ref.txt
+    :: flores_src=@
+    :: flores_tgt=@
+    :: repo=@
+{
+    # assume the src is always English
+    python $repo/scripts/build_fleurs_references.py \
+        --flores-src "${devtest}/devtest.${flores_src}" \
+        --flores-tgt "${devtest}/devtest.${flores_tgt}" \
+        --fleurs-src $gold_src --fleurs-tgt-inferred $references
+}
+
+task RecoverReferencesFleursExtra
+    < devtest=@FetchFloresExtra
     < gold_src=$gold@DumpSTGoldTranscriptions
     > references=ref.txt
     :: flores_src=@
@@ -121,9 +146,36 @@ task CometDirect
     python $repo/scripts/mean_comet.py --path $comet --mean-results $means
 }
 
+task CometDirectExtra
+    < hyps=@DecodeDirect
+    < src=$gold@DumpSTGoldTranscriptions
+    < references=@RecoverReferencesFleursExtra
+    > comet=comet.json
+    > means=comet-means.json
+    :: flores_src=@
+    :: flores_tgt=@
+    :: comet_model=@
+    :: repo=@
+{
+    # compute comet (we can get the other metrics in other tasks?)
+
+    comet-score -s $src -t $hyps -r $references --model $comet_model --to_json $comet
+
+    python $repo/scripts/mean_comet.py --path $comet --mean-results $means
+}
+
 task BleuDirect
     < hyps=@DecodeDirect
     < references=@RecoverReferencesFleurs
+    > bleu=bleu.json
+    :: repo=@
+{
+    sacrebleu --metrics bleu chrf --tokenize=flores200 $references < $hyps > $bleu
+}
+
+task BleuDirectExtra
+    < hyps=@DecodeDirect
+    < references=@RecoverReferencesFleursExtra
     > bleu=bleu.json
     :: repo=@
 {
@@ -250,6 +302,11 @@ plan DirectTranslation {
 
 plan Evaluation {
     reach CometDirect, BleuDirect via (Speech2TextModel: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+}
+
+# # eng_Latn ell_Grek hrv_Latn hun_Latn jpn_Jpan pol_Latn swe_Latn tur_Latn
+plan EvaluationExtra {
+    reach CometDirectExtra, BleuDirectExtra via (Speech2TextModel: lmt_4B_v2_all eurollm_9B_v2_all spite_v2_all) * (LanguagePair: en_el en_hr en_hu en_jp en_pl en_sv en_tr)
 }
 
 ##### Self-cascaded ST #####
