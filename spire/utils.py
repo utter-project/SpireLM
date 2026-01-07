@@ -105,6 +105,6 @@ def load_features(feat_files=None, feat_dir=None):
     assert feat_dir is None or feat_files is None
 
     if feat_dir is not None:
-        feat_files = glob(join(args.feat_dir, "*.npy"))
+        feat_files = glob(join(feat_dir, "*.npy"))
 
     return np.vstack([np.load(p) for p in feat_files])
