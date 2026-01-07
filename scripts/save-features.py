@@ -7,7 +7,7 @@ import torch
 from transformers import AutoFeatureExtractor
 from npy_append_array import NpyAppendArray
 
-from spire.hubert_labeler import Featurizer
+from spire.labeler import Featurizer
 from spire.data import build_dataloader
 
 

@@ -5,7 +5,7 @@ import torch
 from transformers import AutoFeatureExtractor
 
 from spire.utils import detokenize
-from spire.hubert_labeler import HubertLabeler
+from spire.labeler import Labeler
 from spire.data import build_dataloader
 
 
@@ -20,9 +20,7 @@ def main(args):
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
 
-    labeler = HubertLabeler(
-        args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype
-    )
+    labeler = Labeler(args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype)
     feature_extractor = AutoFeatureExtractor.from_pretrained(args.ckpt_path)
 
     device = "cpu" if args.cpu else "cuda"

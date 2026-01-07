@@ -86,9 +86,13 @@ class KMeans(nn.Module):
         return dist
 
 
-class HubertLabeler(nn.Module):
+class Labeler(nn.Module):
 
     def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32):
+        """
+        The layer default of 22 is a strong value for HuBERT-large. It may be
+        inappropriate for other models.
+        """
         super().__init__()
 
         self.featurizer = Featurizer(ckpt_path, layer=layer, dtype=dtype)
