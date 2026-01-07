@@ -4,9 +4,10 @@ from os.path import join
 
 from tqdm import tqdm
 import torch
+from transformers import AutoFeatureExtractor
 from npy_append_array import NpyAppendArray
 
-from spire.hubert_labeler import Featurizer
+from spire.labeler import Featurizer
 from spire.data import build_dataloader
 
 
@@ -20,6 +21,8 @@ def main(args):
     torch_random = torch.Generator(device="cpu")  # DataLoader always uses CPU
     torch_random.manual_seed(args.torch_seed)
 
+    feature_extractor = AutoFeatureExtractor.from_pretrained(args.ssl_model)
+
     featurizer = Featurizer(args.ssl_model, layer=args.layer, dtype=dtype)
 
     featurizer = featurizer.to(device=device)
@@ -29,6 +32,7 @@ def main(args):
 
     loader, n_batches, raw_length = build_dataloader(
         path=args.data_path,
+        feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         dataset_type=args.dataset_type,
@@ -44,29 +48,28 @@ def main(args):
         pin_memory=not args.cpu
     )
 
-    # I think I don't need to use AutoFeatureExtractor here. The spire data
-    # code should apply the Wav2Vec2FeatureExtractor, which as far as I know is
-    # appropriate (but we can revisit this if it turns out to be wrong).
+    # past: specified hour-long shards by multiplying hubert fps by 3600
+    # shard_size = 3600 * 50  # an hour of frames
+    # shard_frames = 0
 
-    # (however, I should change this later when I make the code extensible)
+    # present: directly specify number of *hours* per shard
+    shard_hours = 0.
 
-    # processor = AutoFeatureExtractor.from_pretrained(args.ssl_model)
-    # model = Wav2Vec2BertModel.from_pretrained(args.ssl_model).to(device)
-    # model.eval()
+    # future idea: specify size of shard in *either* hours or frames
+    # (but not both)
 
-    shard_size = 3600 * 50  # an hour of frames
-
-    shard_frames = 0
     n_hours = 0.
     shard_index = 0
 
     os.makedirs(args.feature_dir, exist_ok=True)
     feat_f = NpyAppendArray(join(args.feature_dir, f"shard_{shard_index}.npy"))
 
+    input_field_name = feature_extractor.model_input_names[0]
+
     with torch.no_grad():
         with tqdm(total=args.max_hours) as pbar:
             for batch in loader:
-                inp = batch.input_values.to(dtype=dtype, device=device)
+                inp = batch[input_field_name].to(dtype=dtype, device=device)
 
                 mask = batch.attention_mask
                 if device == "cuda":
@@ -81,19 +84,19 @@ def main(args):
                     flatten=True,
                     return_pad_percent=True
                 )
-                # flatten=True removes padding positions
-                batch_frames = features.shape[0]
-                batch_hours = mask.sum().item() / (args.resample_to * 3600)
+
+                batch_hours = sum(batch["seconds"]) / 3600
 
                 feat_f.append(features.cpu().float().numpy())
 
-                shard_frames += batch_frames
+                # shard_frames += batch_frames
 
                 # update hours seen
+                shard_hours += batch_hours
                 n_hours += batch_hours
 
-                if shard_frames >= shard_size or n_hours >= args.max_hours:
-                    shard_frames = 0
+                if shard_hours >= args.hours_per_shard or n_hours >= args.max_hours:
+                    shard_hours = 0.
 
                     shard_index += 1
                     feat_f = NpyAppendArray(join(args.feature_dir, f"shard_{shard_index}.npy"))
@@ -131,5 +134,6 @@ if __name__ == "__main__":
     parser.add_argument("--validate-examples", action="store_true")
     parser.add_argument("--cpu", action="store_true", help="only useful for debugging")
     parser.add_argument("--feature-dir")
+    parser.add_argument("--hours-per-shard", type=float, default=1.)
     args = parser.parse_args()
     main(args)

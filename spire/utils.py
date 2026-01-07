@@ -1,6 +1,7 @@
 from os.path import exists, join, basename, dirname
 import unicodedata
 
+import numpy as np
 import soundfile as sf
 from transformers import Wav2Vec2FeatureExtractor
 

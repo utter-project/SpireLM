@@ -2,9 +2,10 @@ import argparse
 from tqdm import tqdm
 
 import torch
+from transformers import AutoFeatureExtractor
 
 from spire.utils import detokenize
-from spire.hubert_labeler import HubertLabeler
+from spire.labeler import Labeler
 from spire.data import build_dataloader
 
 
@@ -19,9 +20,8 @@ def main(args):
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
 
-    labeler = HubertLabeler(
-        args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype
-    )
+    labeler = Labeler(args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype)
+    feature_extractor = AutoFeatureExtractor.from_pretrained(args.ckpt_path)
 
     device = "cpu" if args.cpu else "cuda"
     labeler = labeler.to(device=device)
@@ -31,6 +31,7 @@ def main(args):
 
     loader, n_batches, raw_length = build_dataloader(
         path=args.tsv_path,
+        feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         dataset_type=args.dataset_type,
@@ -43,12 +44,14 @@ def main(args):
         hf_location="disk" if args.dataset_type == "hf-disk" else "cache"
     )
 
+    input_field_name = feature_extractor.model_input_names[0]
+
     with open(args.out_path, "w") as f:
         with torch.no_grad():
             labels = []
             indices = []
             for batch in tqdm(loader, total=n_batches):
-                inp = batch.input_values.to(dtype=dtype, device=device)
+                inp = batch[input_field_name].to(dtype=dtype, device=device)
                 mask = batch.attention_mask
                 if device == "cuda":
                     mask = mask.cuda()
