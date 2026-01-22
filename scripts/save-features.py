@@ -23,7 +23,13 @@ def main(args):
 
     feature_extractor = AutoFeatureExtractor.from_pretrained(args.ssl_model)
 
-    featurizer = Featurizer(args.ssl_model, layer=args.layer, dtype=dtype, pooling_width=args.pooling)
+    featurizer = Featurizer(
+        args.ssl_model,
+        layer=args.layer,
+        dtype=dtype,
+        pooling_width=args.pooling_width,
+        pooling_type=args.pooling_type
+    )
 
     featurizer = featurizer.to(device=device)
     featurizer.eval()
@@ -89,8 +95,6 @@ def main(args):
 
                 feat_f.append(features.cpu().float().numpy())
 
-                # shard_frames += batch_frames
-
                 # update hours seen
                 shard_hours += batch_hours
                 n_hours += batch_hours
@@ -135,6 +139,7 @@ if __name__ == "__main__":
     parser.add_argument("--cpu", action="store_true", help="only useful for debugging")
     parser.add_argument("--feature-dir")
     parser.add_argument("--hours-per-shard", type=float, default=1.)
-    parser.add_argument("--pooling", type=int, default=1)
+    parser.add_argument("--pooling-width", type=int, default=1, help="1 recovers no pooling")
+    parser.add_argument("--pooling-type", choices=["mean", "max"], default="mean")
     args = parser.parse_args()
     main(args)

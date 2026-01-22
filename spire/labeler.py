@@ -45,9 +45,9 @@ class Featurizer(nn.Module):
         if pooling_width > 1:
             # do I want ceil_mode?
             if pooling_type == "mean":
-                self.pooling = nn.AvgPool1d(pooling_width, ceil_mode=True)
+                self.pooling = nn.AvgPool1d(pooling_width, ceil_mode=False)
             else:
-                self.pooling = nn.MaxPool1d(pooling_width, ceil_mode=True)
+                self.pooling = nn.MaxPool1d(pooling_width, ceil_mode=False)
         else:
             self.pooling = None
 
@@ -60,17 +60,15 @@ class Featurizer(nn.Module):
         If flatten == False, return batch x seq_len x D
         If flatten == True, return N x D, where N <= batch*seq_len == the number of non-pad positions
         """
+        # is there a good reason not to have this assertion?
+        assert attention_mask is not None
+
         feats = self.model(batch, attention_mask=attention_mask).last_hidden_state
         pre_pool_max_len = feats.shape[1]
 
         if self.pooling is not None:
             feats = self.pooling(feats.transpose(1, 2)).transpose(1, 2)
         post_pool_max_len = feats.shape[1]
-
-        if not flatten:
-            return feats
-
-        assert attention_mask is not None
 
         # compute pre-pool output mask
         output_mask = self._get_feature_vector_attention_mask(
@@ -91,6 +89,9 @@ class Featurizer(nn.Module):
                 output_mask.dtype,
                 output_mask.device
             )
+
+        if not flatten:
+            return feats, output_mask
 
         flattened_output_mask = output_mask.view(-1)
 
@@ -161,26 +162,17 @@ class Labeler(nn.Module):
         Take a batch of inputs, return scores for all V clusters
         """
 
-        feats = self.featurizer(batch, attention_mask=attention_mask)
+        feats, attention_mask = self.featurizer(batch, attention_mask=attention_mask)
         dist = self.kmeans(feats)
-        return dist
+        return dist, attention_mask
 
     def predict(self, batch, attention_mask=None):
-        attention_mask = None
-        dist = self(batch, attention_mask=attention_mask)
+        dist, output_mask = self(batch, attention_mask=attention_mask)
         labels = dist.argmin(dim=-1)
 
-        # what's feats.shape[1]? It's the length dimension, so it should be
-        # dist.shape[1] as well
-        if attention_mask is not None:
-            # right ... if we pool, then dist.shape[1] doesn't match attention_mask and it fails.
-            output_mask = self._get_feature_vector_attention_mask(dist.shape[1], attention_mask)
-            print("output_mask", output_mask.sum(dim=-1))
+        if output_mask is not None:
             labels.masked_fill_(~output_mask, -1)
         return labels
-
-    def _get_feature_vector_attention_mask(self, length, attention_mask):
-        return self.featurizer._get_feature_vector_attention_mask(length, attention_mask)
 
     def label_wav(self, wav_path, **detok_args):
         # read the audio into a batch
