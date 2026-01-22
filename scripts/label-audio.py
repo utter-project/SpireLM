@@ -20,7 +20,14 @@ def main(args):
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
 
-    labeler = Labeler(args.ckpt_path, args.km_path, layer=args.layer, dtype=dtype)
+    labeler = Labeler(
+        args.ckpt_path,
+        args.km_path,
+        layer=args.layer,
+        dtype=dtype,
+        pooling_width=args.pooling_width,
+        pooling_type=args.pooling_type
+    )
     feature_extractor = AutoFeatureExtractor.from_pretrained(args.ckpt_path)
 
     device = "cpu" if args.cpu else "cuda"
@@ -99,6 +106,8 @@ if __name__ == "__main__":
                         help="Number of examples to take, starting with start-ix")
     parser.add_argument("--validate-examples", action="store_true")
     parser.add_argument("--cpu", action="store_true", help="only useful for debugging")
+    parser.add_argument("--pooling-width", type=int, default=1, help="1 recovers no pooling")
+    parser.add_argument("--pooling-type", choices=["mean", "max"], default="mean")
     args = parser.parse_args()
 
     main(args)

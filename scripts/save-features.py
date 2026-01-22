@@ -23,7 +23,7 @@ def main(args):
 
     feature_extractor = AutoFeatureExtractor.from_pretrained(args.ssl_model)
 
-    featurizer = Featurizer(args.ssl_model, layer=args.layer, dtype=dtype)
+    featurizer = Featurizer(args.ssl_model, layer=args.layer, dtype=dtype, pooling_width=args.pooling)
 
     featurizer = featurizer.to(device=device)
     featurizer.eval()
@@ -135,5 +135,6 @@ if __name__ == "__main__":
     parser.add_argument("--cpu", action="store_true", help="only useful for debugging")
     parser.add_argument("--feature-dir")
     parser.add_argument("--hours-per-shard", type=float, default=1.)
+    parser.add_argument("--pooling", type=int, default=1)
     args = parser.parse_args()
     main(args)

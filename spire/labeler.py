@@ -6,9 +6,27 @@ from transformers import AutoModel, HubertModel, Wav2Vec2BertModel
 from spire.utils import load_wav, detokenize
 
 
+def _pool_out_length(input_length, pooling_size, stride=None):
+    # 1D convolutional layer output length formula taken
+    # from https://pytorch.org/docs/stable/generated/torch.nn.Conv1d.html
+    if stride is None:
+        stride = pooling_size
+    return (torch.div(input_length - pooling_size, stride, rounding_mode="floor") + 1).to(torch.long)
+
+
+def _lengths_to_mask(lengths, max_length, dtype, device):
+    batch_size = lengths.shape[0]
+    attention_mask = torch.zeros(
+        (batch_size, max_length), dtype=dtype, device=device
+    )
+    attention_mask[(torch.arange(attention_mask.shape[0], device=device), lengths - 1)] = 1
+    attention_mask = attention_mask.flip([-1]).cumsum(-1).flip([-1]).bool()
+    return attention_mask
+
+
 class Featurizer(nn.Module):
 
-    def __init__(self, ckpt_path, layer=22, dtype=torch.float32):
+    def __init__(self, ckpt_path, layer=22, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
         super().__init__()
 
         self.model = AutoModel.from_pretrained(ckpt_path, torch_dtype=dtype)
@@ -24,6 +42,15 @@ class Featurizer(nn.Module):
         else:
             raise ValueError("Unknown SSL architecture")
 
+        if pooling_width > 1:
+            # do I want ceil_mode?
+            if pooling_type == "mean":
+                self.pooling = nn.AvgPool1d(pooling_width, ceil_mode=True)
+            else:
+                self.pooling = nn.MaxPool1d(pooling_width, ceil_mode=True)
+        else:
+            self.pooling = None
+
     def _get_feature_vector_attention_mask(self, length, attention_mask):
         return self.model._get_feature_vector_attention_mask(length, attention_mask)
 
@@ -31,18 +58,43 @@ class Featurizer(nn.Module):
         """
         Take a batch of inputs, return scores for all V clusters
         If flatten == False, return batch x seq_len x D
-        If flatten == True, return
+        If flatten == True, return N x D, where N <= batch*seq_len == the number of non-pad positions
         """
         feats = self.model(batch, attention_mask=attention_mask).last_hidden_state
+        pre_pool_max_len = feats.shape[1]
+
+        if self.pooling is not None:
+            feats = self.pooling(feats.transpose(1, 2)).transpose(1, 2)
+        post_pool_max_len = feats.shape[1]
+
         if not flatten:
             return feats
 
         assert attention_mask is not None
 
-        output_mask = self._get_feature_vector_attention_mask(feats.shape[1], attention_mask)
-        flattened_feats = feats.view(-1, feats.shape[-1])
+        # compute pre-pool output mask
+        output_mask = self._get_feature_vector_attention_mask(
+            pre_pool_max_len,
+            attention_mask
+        )
+
+        if self.pooling is not None:
+            post_pool_lengths = _pool_out_length(
+                output_mask.sum(dim=-1),
+                self.pooling.kernel_size[0],
+                self.pooling.stride[0]
+            )
+            # convert length to mask
+            output_mask = _lengths_to_mask(
+                post_pool_lengths,
+                post_pool_max_len,
+                output_mask.dtype,
+                output_mask.device
+            )
+
         flattened_output_mask = output_mask.view(-1)
 
+        flattened_feats = feats.view(-1, feats.shape[-1])
         non_pad_feats = flattened_feats[flattened_output_mask]
 
         if not return_pad_percent:
@@ -88,14 +140,20 @@ class KMeans(nn.Module):
 
 class Labeler(nn.Module):
 
-    def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32):
+    def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
         """
         The layer default of 22 is a strong value for HuBERT-large. It may be
         inappropriate for other models.
         """
         super().__init__()
 
-        self.featurizer = Featurizer(ckpt_path, layer=layer, dtype=dtype)
+        self.featurizer = Featurizer(
+            ckpt_path,
+            layer=layer,
+            dtype=dtype,
+            pooling_width=pooling_width,
+            pooling_type=pooling_type
+        )
         self.kmeans = KMeans(km_path, dtype=dtype)
 
     def forward(self, batch, attention_mask=None):
@@ -108,18 +166,21 @@ class Labeler(nn.Module):
         return dist
 
     def predict(self, batch, attention_mask=None):
+        attention_mask = None
         dist = self(batch, attention_mask=attention_mask)
         labels = dist.argmin(dim=-1)
 
         # what's feats.shape[1]? It's the length dimension, so it should be
         # dist.shape[1] as well
         if attention_mask is not None:
+            # right ... if we pool, then dist.shape[1] doesn't match attention_mask and it fails.
             output_mask = self._get_feature_vector_attention_mask(dist.shape[1], attention_mask)
+            print("output_mask", output_mask.sum(dim=-1))
             labels.masked_fill_(~output_mask, -1)
         return labels
 
     def _get_feature_vector_attention_mask(self, length, attention_mask):
-        return self.featurizer.model._get_feature_vector_attention_mask(length, attention_mask)
+        return self.featurizer._get_feature_vector_attention_mask(length, attention_mask)
 
     def label_wav(self, wav_path, **detok_args):
         # read the audio into a batch
