@@ -5,5 +5,11 @@ global {
 
     km_model="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000"
 
+    pooling_width=(PoolingWidth: 2 3)
+    pooling_type=(PoolingType: mean max)
+
+    batch_size=(BatchSize: 4 1 8)
+    batch_seconds=(BatchSeconds: 60 120 240 300)
+
     # dsu_format=(DSUFormat: extra_id pua)
 }

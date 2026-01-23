@@ -10,7 +10,7 @@ task LabelCorpus
     :: shard_number=@
     :: shard_size=@
     :: hf_split=@
-    :: batch_size=(BatchSize: 4 1)
+    :: batch_size=@
     :: repo=@
 {
     start_ix=$(( ($shard_number - 1) * $shard_size))
@@ -34,6 +34,47 @@ task LabelCorpus
         --no-dedup
 }
 
+task LabelCorpusPooled
+    > dsus=dsus_no_dedup.txt
+    :: hubert_model=@
+    :: hubert_layer=@
+    :: km_model=@
+    :: hubert_dtype=@
+    :: dataset_path=@
+    :: dataset_type=@
+    :: path_extra=@
+    :: shard_number=@
+    :: shard_size=@
+    :: hf_split=@
+    :: batch_seconds=@
+    :: pooling_width=@
+    :: pooling_type=@
+    :: repo=@
+{
+    start_ix=$(( ($shard_number - 1) * $shard_size))
+    python $repo/scripts/label-audio.py \
+        --tsv_path $dataset_path \
+        --dataset-type $dataset_type \
+        --out_path $dsus \
+        --batch-size $batch_seconds \
+        --num-workers 0 \
+        --ckpt_path $hubert_model \
+        --layer $hubert_layer \
+        --km_path $km_model \
+        --dtype $hubert_dtype \
+        --start-ix $start_ix \
+        --n-examples $shard_size \
+        --validate-examples \
+        --hf-split $hf_split \
+        --resample-to 16000 \
+        --path-extra $path_extra \
+        --dataset-type $dataset_type \
+        --no-dedup \
+        --pooling-width $pooling_width \
+        --pooling-type $pooling_type \
+        --token-batching
+}
+
 task ComputeLengths
     :: dataset_path=@
     :: path_extra=@
@@ -53,8 +94,20 @@ task Deduplicate
     python $repo/scripts/deduplicate.py < $dsus > $dsus_dedup
 }
 
+task DeduplicatePooled
+    < dsus=@LabelCorpusPooled
+    > dsus_dedup=dsus.txt
+    :: repo=@
+{
+    python $repo/scripts/deduplicate.py < $dsus > $dsus_dedup
+}
+
 plan Lengths {
     reach ComputeLengths
+}
+
+plan LabelPooled {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2)
 }
 
 plan LabelFullPrecisionAll {

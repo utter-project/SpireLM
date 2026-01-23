@@ -43,7 +43,8 @@ def collate_fn(inputs, feature_extractor):
         return_attention_mask=True
     )
     batch["indices"] = [inp["idx"] for inp in inputs]
-    batch["seconds"] = [audio.shape[0] / feature_extractor.sampling_rate for audio in audios]
+    if "seconds" not in inputs[0]:
+        batch["seconds"] = [audio.shape[0] / feature_extractor.sampling_rate for audio in audios]
     return batch
 
 
@@ -57,29 +58,32 @@ def collate_hf(inputs, feature_extractor):
         return_attention_mask=True
     )
     batch["indices"] = [inp["idx"] for inp in inputs]
-    batch["seconds"] = [audio.shape[0] / feature_extractor.sampling_rate for audio in audios]
+    if "seconds" not in inputs[0]:
+        batch["seconds"] = [audio.shape[0] / feature_extractor.sampling_rate for audio in audios]
     return batch
 
 
 class LengthSortedAudioSampler(Sampler):
 
-    def __init__(self, data):
+    def __init__(self, data, length_key="seconds"):
         self.data = data
+        self.length_key = length_key
 
     def __len__(self):
         return len(self.data)
 
     def __iter__(self):
-        sorted_data = sorted(self.data, key=lambda x: x["n_samples"], reverse=True)
+        sorted_data = sorted(self.data, key=lambda x: x[self.length_key], reverse=True)
         for ex in sorted_data:
             yield ex["idx"]
 
 
 class TokenBatchSampler(BatchSampler):
 
-    def __init__(self, data: AudioTSVDataset, sampler: Sampler, batch_size: int, drop_last: bool = False):
+    def __init__(self, data: AudioTSVDataset, sampler: Sampler, batch_size: int, drop_last: bool = False, length_key: str = "seconds"):
         super().__init__(sampler, batch_size, drop_last)
         self.data = data
+        self.length_key = length_key
 
     def __iter__(self):
         batch = []
@@ -89,7 +93,7 @@ class TokenBatchSampler(BatchSampler):
         for idx in self.sampler:
             ex = self.data[idx]
 
-            n_tokens = ex["n_samples"]
+            n_tokens = ex[self.length_key]
             batch.append(idx)
             longest_len = max(longest_len, n_tokens)
 
@@ -139,9 +143,10 @@ def load_hf_audio_dataset(
     return dataset
 
 
-def get_valid_indices(dataset):
+def get_valid_indices_and_lengths(dataset):
 
     ix = []
+    lengths = []
 
     if isinstance(dataset, AudioTSVDataset):
         for i in tqdm(range(len(dataset))):
@@ -149,21 +154,24 @@ def get_valid_indices(dataset):
             if ex["n_samples"] == 0:
                 continue
             ix.append(i)
+            lengths.append(ex["n_samples"])
 
     else:
         for i in tqdm(range(len(dataset))):
             try:
-                _ = dataset[i]
+                ex = dataset[i]
             except sf.LibsndfileError:
                 continue
             ix.append(i)
-    return ix
+            lengths.append(ex["audio"]["array"].shape[0])
+    return ix, lengths
 
 
 def build_dataloader(
         path, feature_extractor, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
         n_examples=0, validate_examples=False, path_extra="en", hf_location="disk",
-        hf_split="test", resample_to=None, shuffle=False, torch_random=None, pin_memory=False):
+        hf_split="test", resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
+        token_batching=False):
 
     # Build dataset
     if dataset_type == "tsv":
@@ -185,22 +193,21 @@ def build_dataloader(
     # optionally filter invalid examples (validation is slow, but some HF speech
     # corpora include entries with missing audio, so it may be necessary to
     # check.)
-    if validate_examples:
-        valid_indices = get_valid_indices(dataset)
+    if validate_examples or token_batching:
+        valid_indices, valid_lengths = get_valid_indices_and_lengths(dataset)
         dataset = dataset.select(valid_indices)
+
+        valid_lengths = [vl / feature_extractor.sampling_rate for vl in valid_lengths]
+        dataset = dataset.add_column(name="seconds", column=valid_lengths)
 
     print("Dataset lengths:")
     print("Raw: {}\tAfter validating: {}".format(length_before_validating, len(dataset)))
 
     # build the collator
-    # feature_extractor = Wav2Vec2FeatureExtractor()
     collate_func = collate_fn if dataset_type == "tsv" else collate_hf
     collator = partial(collate_func, feature_extractor=feature_extractor)
 
-    # maybe token batching will become possible with other dataset types
-    uses_token_batching = dataset_type == "tsv"
-
-    if uses_token_batching:
+    if token_batching:
         sampler = LengthSortedAudioSampler(dataset)
         batch_sampler = TokenBatchSampler(dataset, sampler, batch_size)
     else:
@@ -216,7 +223,7 @@ def build_dataloader(
     )
 
     # count number of batches
-    if uses_token_batching:
+    if token_batching:
         n_batches = len([b for b in batch_sampler])
     else:
         n_batches = len(loader)
