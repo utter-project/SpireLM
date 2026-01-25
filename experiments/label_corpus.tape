@@ -35,6 +35,7 @@ task LabelCorpus
 }
 
 task LabelCorpusPooled
+    < times=@ComputeLengths
     > dsus=dsus_no_dedup.txt
     :: hubert_model=@
     :: hubert_layer=@
@@ -72,7 +73,48 @@ task LabelCorpusPooled
         --no-dedup \
         --pooling-width $pooling_width \
         --pooling-type $pooling_type \
-        --token-batching
+        --token-batching \
+        --example-lengths $times
+}
+
+task LabelCorpusPooledVanilla
+    > dsus=dsus_no_dedup.txt
+    :: hubert_model=@
+    :: hubert_layer=@
+    :: km_model=@
+    :: hubert_dtype=@
+    :: dataset_path=@
+    :: dataset_type=@
+    :: path_extra=@
+    :: shard_number=@
+    :: shard_size=@
+    :: hf_split=@
+    :: batch_size=@
+    :: pooling_width=@
+    :: pooling_type=@
+    :: repo=@
+{
+    start_ix=$(( ($shard_number - 1) * $shard_size))
+    python $repo/scripts/label-audio.py \
+        --tsv_path $dataset_path \
+        --dataset-type $dataset_type \
+        --out_path $dsus \
+        --batch-size $batch_size \
+        --num-workers 0 \
+        --ckpt_path $hubert_model \
+        --layer $hubert_layer \
+        --km_path $km_model \
+        --dtype $hubert_dtype \
+        --start-ix $start_ix \
+        --n-examples $shard_size \
+        --validate-examples \
+        --hf-split $hf_split \
+        --resample-to 16000 \
+        --path-extra $path_extra \
+        --dataset-type $dataset_type \
+        --no-dedup \
+        --pooling-width $pooling_width \
+        --pooling-type $pooling_type
 }
 
 task ComputeLengths
@@ -107,7 +149,67 @@ plan Lengths {
 }
 
 plan LabelPooled {
-    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2)
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240)
+}
+
+plan LabelPooled_1_10 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240) * (ShardNumber: 1..10)
+}
+
+plan LabelPooled_11_20 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240) * (ShardNumber: 11..20)
+}
+
+plan LabelPooled_21_30 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240) * (ShardNumber: 21..30)
+}
+
+plan LabelPooled_21_30_no_25 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240) * (ShardNumber: 21 22 23 24 26 27 28 29 30)
+}
+
+plan LabelPooled_25 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240) * (ShardNumber: 25)
+}
+
+plan LabelPooled_31_40 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240) * (ShardNumber: 31..40)
+}
+
+plan LabelPooled_41_50 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240) * (ShardNumber: 41..50)
+}
+
+plan LabelPooled_51_60 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240) * (ShardNumber: 51..60)
+}
+
+plan LabelPooled_61_70 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240) * (ShardNumber: 61..70)
+}
+
+plan LabelPooled_71_83 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240) * (ShardNumber: 71..83)
+}
+
+plan DDP {
+    reach DeduplicatePooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 240)
+}
+
+plan LabelPooled480 {
+    reach LabelCorpusPooled via (ShardNumber: 1) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSeconds: 480)
+}
+
+plan LabelPooledVanilla {
+    reach LabelCorpusPooledVanilla via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSize: 4)
+}
+
+plan LabelPooledVanilla1 {
+    reach LabelCorpusPooledVanilla via (ShardNumber: 1) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSize: 1)
+}
+
+plan LabelPooledVanilla16 {
+    reach LabelCorpusPooledVanilla via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 2) * (BatchSize: 16)
 }
 
 plan LabelFullPrecisionAll {

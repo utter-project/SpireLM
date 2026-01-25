@@ -8,8 +8,8 @@ global {
     pooling_width=(PoolingWidth: 2 3)
     pooling_type=(PoolingType: mean max)
 
-    batch_size=(BatchSize: 4 1 8)
-    batch_seconds=(BatchSeconds: 60 120 240 300)
+    batch_size=(BatchSize: 4 1 8 16)
+    batch_seconds=(BatchSeconds: 60 120 240 300 480)
 
     # dsu_format=(DSUFormat: extra_id pua)
 }

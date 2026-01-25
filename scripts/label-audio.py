@@ -49,7 +49,8 @@ def main(args):
         hf_split=args.hf_split,
         resample_to=args.resample_to,
         hf_location="disk" if args.dataset_type == "hf-disk" else "cache",
-        token_batching=args.token_batching
+        token_batching=args.token_batching,
+        example_lengths=args.example_lengths
     )
 
     input_field_name = feature_extractor.model_input_names[0]
@@ -58,6 +59,7 @@ def main(args):
         with torch.no_grad():
             labels = []
             indices = []
+            lengths = []
             for batch in tqdm(loader, total=n_batches):
                 inp = batch[input_field_name].to(dtype=dtype, device=device)
                 mask = batch.attention_mask
@@ -72,14 +74,18 @@ def main(args):
 
                 labels.extend(detokenized_labels)
                 indices.extend(batch.indices)
+                lengths.extend(batch.seconds)
 
-        idx2labels = dict(zip(indices, labels))
+        # idx2labels = dict(zip(indices, labels))
+        idx2labels = {i: (label, length) for i, label, length in zip(indices, labels, lengths)}
         for i in range(raw_length):
             if i not in idx2labels:
                 # this should be extremely rare
                 f.write("\n")
                 continue
-            label_string = pred2str_single(idx2labels[i])
+            label, length = idx2labels[i]
+            label_string = pred2str_single(label) if length > 0 else ""
+            # label_string = pred2str_single(idx2labels[i])
             f.write(label_string + "\n")
 
 
@@ -110,6 +116,7 @@ if __name__ == "__main__":
     parser.add_argument("--pooling-width", type=int, default=1, help="1 recovers no pooling")
     parser.add_argument("--pooling-type", choices=["mean", "max"], default="mean")
     parser.add_argument("--token-batching", action="store_true")
+    parser.add_argument("--example-lengths", default=None)
     args = parser.parse_args()
 
     main(args)
