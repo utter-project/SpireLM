@@ -53,6 +53,10 @@ task LabelCorpusPooled
     :: repo=@
 {
     start_ix=$(( ($shard_number - 1) * $shard_size))
+    extra_args=""
+    if [[ $path_extra != "" ]] ; then
+        extra_args="--path-extra ${path_extra}"
+    fi
     python $repo/scripts/label-audio.py \
         --tsv_path $dataset_path \
         --dataset-type $dataset_type \
@@ -68,13 +72,13 @@ task LabelCorpusPooled
         --validate-examples \
         --hf-split $hf_split \
         --resample-to 16000 \
-        --path-extra $path_extra \
         --dataset-type $dataset_type \
         --no-dedup \
         --pooling-width $pooling_width \
         --pooling-type $pooling_type \
         --token-batching \
-        --example-lengths $times
+        --example-lengths $times \
+        $extra_args
 }
 
 task LabelCorpusPooledVanilla
