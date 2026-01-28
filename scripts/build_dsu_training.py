@@ -13,7 +13,8 @@ from os.path import basename, splitext
 from functools import partial
 
 from tqdm import tqdm
-from datasets import load_dataset
+import numpy as np
+from datasets import load_dataset, disable_caching
 from spire.data import load_hf_audio_dataset
 
 
@@ -60,16 +61,37 @@ def keep_example(ex, min_columns=(), min_column_values=(), max_columns=(), max_c
         and all(ex[col] <= val for col, val in zip(max_columns, max_column_values))
 
 
+def compute_stats(spite_dataset):
+    """
+    The purpose of this is to keep track of how much data remains after the
+    filtering stage
+    """
+    qe = np.array(spite_dataset["cometqe_22"])
+    qe_mean = qe.mean()
+    blaser2_src = np.array(spite_dataset["blaser2_src"])
+    blaser2_src_mean = blaser2_src.mean()
+    length = np.array(spite_dataset["audio_length"])
+    length_mean = length.mean()
+    length_std = length.std()
+    length_sum_hours = length.sum() / 3600
+    return {"cometqe_22": qe_mean,
+            "blaser2_src": blaser2_src_mean,
+            "length_total_h": length_sum_hours,
+            "length_mean_s": length_mean,
+            "length_std_s": length_std}
+
+
 def main(args):
-    if args.template is not None:
-        with open(args.template) as f:
-            speech_turn = json.load(f)["template"]
+    if args.templates is not None:
+        with open(args.templates) as f:
+            speech_turn = json.load(f)[args.template_key]
     else:
         # Minimalistic default prompt, which is ambiguous between English ASR
         # and to-English ST
         speech_turn = "Speech: {dsu_seq}\nEnglish:"
 
     if args.audio_dataset:
+        disable_caching()
         dataset = load_hf_audio_dataset(
             args.dataset_path,
             path_extra=args.path_extra,
@@ -104,6 +126,11 @@ def main(args):
         max_column_values=args.max_column_values
     )
     dataset = dataset.filter(filter_func)
+    # at this point, do I want to dump stats about the corpora as well?
+    if args.spite_stats is not None:
+        stats = compute_stats(dataset)
+        with open(args.spite_stats, "w") as f:
+            json.dump(stats, f)
 
     # now: iterate over examples, turn them into prompts, and write them to
     # the output file
@@ -120,7 +147,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dsus", nargs="+")
-    parser.add_argument("--template", default=None, help="json prompt template")
+    parser.add_argument("--templates", default=None, help="json prompt template")
+    parser.add_argument("--template-key", default="template")
     parser.add_argument("--audio-dataset", action="store_true")
     parser.add_argument("--dataset-path")
     parser.add_argument("--path-extra")
@@ -132,5 +160,6 @@ if __name__ == "__main__":
     parser.add_argument("--min-column-values", nargs="*", default=[], type=float)
     parser.add_argument("--max-columns", nargs="*", default=[])
     parser.add_argument("--max-column-values", nargs="*", default=[], type=float)
+    parser.add_argument("--spite-stats")
     args = parser.parse_args()
     main(args)
