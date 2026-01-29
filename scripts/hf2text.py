@@ -17,10 +17,8 @@ def main(args):
     for lang in args.langs:
         dev_path = "dev/{}.parquet".format(lang)
         devtest_path = "devtest/{}.parquet".format(lang)
-        flores = load_dataset(
-            args.flores_path,
-            data_files={"dev": [dev_path], "devtest": [devtest_path]}
-        )
+
+        flores = load_dataset(args.flores_path, lang)
 
         with open(join(args.dev, "dev." + lang), "w") as f:
             for line in flores["dev"]["text"]:

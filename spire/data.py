@@ -208,7 +208,6 @@ def load_hf_audio_dataset(
             path = join(path, path_extra)
         dataset = load_from_disk(path)[split]
     else:
-        # currently just VCTK
         if path_extra:
             dataset = load_dataset(path, path_extra, split=split)
         else:
@@ -273,8 +272,8 @@ def build_dataloader(
 
     if token_batching:
         if dataset_type == "tsv":
-            sampler = LengthKeySortedAudioSampler(dataset, key="n_samples")
-            batch_sampler = NaiveTokenBatchSampler(dataset, sampler, batch_size)
+            sampler = LengthKeySortedAudioSampler(dataset, length_key="n_samples")
+            batch_sampler = NaiveTokenBatchSampler(dataset, sampler, batch_size, length_key="n_samples")
         else:
             sampler = LengthSortedAudioSampler(dataset["idx"], lengths)
             batch_sampler = TokenBatchSampler(sampler, batch_size)
