@@ -120,6 +120,7 @@ task LabelAudio
     :: hubert_dtype=@
     :: asr_dataset=@
     :: asr_path_extra=@
+    :: dataset_type=@
     :: repo=@
 {
     # dataset_path should be defined in the uservars file
@@ -128,7 +129,7 @@ task LabelAudio
     # batch-size should be 4 (since it isn't token-batching anymore)
     python $repo/scripts/label-audio.py \
         --tsv_path $asr_dataset \
-        --dataset-type "hf-disk" \
+        --dataset-type $dataset_type \
         --path-extra $asr_path_extra \
         --hf-split test \
         --out_path $dsus \
@@ -263,13 +264,14 @@ task DumpASRText
     > metadata=metadata.json
     :: asr_dataset=@
     :: asr_path_extra=@
+    :: dataset_type=@
     :: asr_split=@
     :: asr_text_field=@
     :: repo=@
 {
     python $repo/scripts/extract_asr_text.py \
         --path $asr_dataset --path-extra $asr_path_extra --split $asr_split --text-field $asr_text_field \
-        --dataset-type hf-disk --corpus $references --metadata $metadata
+        --dataset-type $dataset_type --corpus $references --metadata $metadata
 }
 
 task NormalizeHyps
@@ -337,6 +339,16 @@ plan LabelizeLegacy {
 
 plan LabelizeNew {
     reach LabelAudioNew via (ASRDataset: *)
+}
+
+##### CV20 Experiments #####
+
+plan DecodeCV20 {
+    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: lmt_4B_cv20h_1200) * (KMModel: cv20h) * (HubertDtype: bf16)
+}
+
+plan ComputeWERCV20 {
+    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: lmt_4B_cv20h_1200) * (KMModel: cv20h) * (HubertDtype: bf16)
 }
 
 ##### Hypothesis Generation #####

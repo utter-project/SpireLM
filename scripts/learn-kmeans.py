@@ -26,7 +26,7 @@ def main(args):
         random_state=args.seed
     )
 
-    features = load_features(feat_dir=args.feat_dir, feat_files=args.feat_files)
+    features = load_features(feat_dir=args.feat_dir, feat_files=args.feat_files, n_files=args.n_files)
 
     kmeans.fit(features)
 
@@ -37,6 +37,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--feat-dir")
     parser.add_argument("--feat-files", nargs="*")
+    parser.add_argument("--n-files", type=int, default=0, help="only with --feat-dir")
     parser.add_argument("--out-path", default="kmeans.joblib")
     parser.add_argument("--n-clusters", type=int, default=5000)
     parser.add_argument("--seed", type=int, default=42)

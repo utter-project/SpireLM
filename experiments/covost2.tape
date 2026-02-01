@@ -62,6 +62,7 @@ task LabelAudio
     :: hubert_dtype=@
     :: repo=@
 {
+    #
     python $repo/scripts/label-audio.py \
         --tsv_path $wav_tsv \
         --out_path $dsus \
@@ -69,7 +70,8 @@ task LabelAudio
         --layer $hubert_layer \
         --km_path $km_model \
         --batch-size 1000000 \
-        --dtype $hubert_dtype
+        --dtype $hubert_dtype \
+        --token-batching
 }
 
 task ConvertTrainAudio
@@ -295,6 +297,20 @@ task ComputeWER
     :: repo=@
 {
     python $repo/scripts/compute_wer.py --hyp $hyps_normalized --ref $refs_normalized > $results
+}
+
+plan Convert {
+    reach ConvertAudio via (LanguagePair: en_de en_zh)
+}
+
+##### CV20 Experiments #####
+
+plan DirectTranslationCV20 {
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_cv20h_1200) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_zh)
+}
+
+plan EvaluationCV20 {
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_cv20h_1200) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_zh)
 }
 
 ##### Plans for getting DSUs of the train set (which is parallel between en-de and en-zh) #####

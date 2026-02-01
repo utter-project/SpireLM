@@ -3,13 +3,14 @@ task DumpSTGoldTranscriptions
     > metadata=metadata.json
     :: st_dataset=@
     :: st_path_extra=@
+    :: dataset_type=@
     :: st_split=@
     :: st_text_field=@
     :: repo=@
 {
     python $repo/scripts/extract_asr_text.py \
         --path $st_dataset --path-extra $st_path_extra --split $st_split --text-field $st_text_field \
-        --dataset-type hf-disk --corpus $gold --metadata $metadata
+        --dataset-type $dataset_type --corpus $gold --metadata $metadata
 }
 
 task FetchFlores
@@ -70,6 +71,7 @@ task LabelAudio
     :: hubert_dtype=@
     :: st_dataset=@
     :: path_extra=@
+    :: dataset_type=@
     :: repo=@
 {
     # dataset_path should be defined in the uservars file
@@ -78,7 +80,7 @@ task LabelAudio
     # batch-size should be 4 (since it isn't token-batching anymore)
     python $repo/scripts/label-audio.py \
         --tsv_path $st_dataset \
-        --dataset-type "hf-disk" \
+        --dataset-type $dataset_type \
         --path-extra $path_extra \
         --hf-split test \
         --out_path $dsus \
@@ -280,6 +282,16 @@ task BleuCascaded
     :: repo=@
 {
     sacrebleu --metrics bleu chrf --tokenize=flores200 $references < $hyps > $bleu
+}
+
+##### CV20 Experiments #####
+
+plan DirectTranslationCV20 {
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_cv20h_1200) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+}
+
+plan EvaluationCV20 {
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_cv20h_1200) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
 }
 
 ##### Tokenize audio for ST experiments #####

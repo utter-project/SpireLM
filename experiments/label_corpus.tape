@@ -10,7 +10,7 @@ task LabelCorpus
     :: shard_number=@
     :: shard_size=@
     :: hf_split=@
-    :: batch_size=@
+    :: ssl_batch_size=@
     :: repo=@
 {
     start_ix=$(( ($shard_number - 1) * $shard_size))
@@ -18,7 +18,7 @@ task LabelCorpus
         --tsv_path $dataset_path \
         --dataset-type $dataset_type \
         --out_path $dsus \
-        --batch-size $batch_size \
+        --batch-size $ssl_batch_size \
         --num-workers 0 \
         --ckpt_path $hubert_model \
         --layer $hubert_layer \
@@ -81,6 +81,51 @@ task LabelCorpusPooled
         $extra_args
 }
 
+task LabelCorpusImproved
+    < times=@ComputeLengths
+    > dsus=dsus_no_dedup.txt
+    :: hubert_model=@
+    :: hubert_layer=@
+    :: km_model=@
+    :: hubert_dtype=@
+    :: dataset_path=@
+    :: dataset_type=@
+    :: path_extra=@
+    :: shard_number=@
+    :: shard_size=@
+    :: hf_split=@
+    :: batch_seconds=@
+    :: pooling_width=@
+    :: pooling_type=@
+    :: repo=@
+{
+    start_ix=$(( ($shard_number - 1) * $shard_size))
+    extra_args=""
+    if [[ $path_extra != "" ]] ; then
+        extra_args="--path-extra ${path_extra}"
+    fi
+    python $repo/scripts/label-audio.py \
+        --tsv_path $dataset_path \
+        --dataset-type $dataset_type \
+        --out_path $dsus \
+        --batch-size $batch_seconds \
+        --num-workers 0 \
+        --ckpt_path $hubert_model \
+        --layer $hubert_layer \
+        --km_path $km_model \
+        --dtype $hubert_dtype \
+        --start-ix $start_ix \
+        --n-examples $shard_size \
+        --validate-examples \
+        --hf-split $hf_split \
+        --resample-to 16000 \
+        --dataset-type $dataset_type \
+        --no-dedup \
+        --token-batching \
+        --example-lengths $times \
+        $extra_args
+}
+
 task LabelCorpusPooledVanilla
     > dsus=dsus_no_dedup.txt
     :: hubert_model=@
@@ -93,7 +138,7 @@ task LabelCorpusPooledVanilla
     :: shard_number=@
     :: shard_size=@
     :: hf_split=@
-    :: batch_size=@
+    :: ssl_batch_size=@
     :: pooling_width=@
     :: pooling_type=@
     :: repo=@
@@ -103,7 +148,7 @@ task LabelCorpusPooledVanilla
         --tsv_path $dataset_path \
         --dataset-type $dataset_type \
         --out_path $dsus \
-        --batch-size $batch_size \
+        --batch-size $ssl_batch_size \
         --num-workers 0 \
         --ckpt_path $hubert_model \
         --layer $hubert_layer \
@@ -148,8 +193,68 @@ task DeduplicatePooled
     python $repo/scripts/deduplicate.py < $dsus > $dsus_dedup
 }
 
+task DeduplicateImproved
+    < dsus=@LabelCorpusImproved
+    > dsus_dedup=dsus.txt
+    :: repo=@
+{
+    python $repo/scripts/deduplicate.py < $dsus > $dsus_dedup
+}
+
 plan Lengths {
     reach ComputeLengths
+}
+
+plan DeduplicateImprovedCV20h {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: cv20h)
+}
+
+plan DeduplicateImprovedGiga20h {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga20h)
+}
+
+plan LabelGiga20h {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga20h)
+}
+
+plan LabelCV20h {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: cv20h)
+}
+
+plan LabelCV20h_1_10 {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: cv20h) * (ShardNumber: 1..10)
+}
+
+plan LabelCV20h_11_20 {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: cv20h) * (ShardNumber: 11..20)
+}
+
+plan LabelCV20h_21_40 {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: cv20h) * (ShardNumber: 21..40)
+}
+
+plan LabelCV20h_41_60 {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: cv20h) * (ShardNumber: 41..60)
+}
+
+plan LabelCV20h_61_83 {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: cv20h) * (ShardNumber: 61..83)
+}
+
+plan LabelGiga20h_1_20 {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga20h) * (ShardNumber: 1..20)
+}
+
+plan LabelGiga20h_21_40 {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga20h) * (ShardNumber: 21..40)
+}
+
+plan LabelGiga20h_41_60 {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga20h) * (ShardNumber: 41..60)
+}
+
+plan LabelGiga20h_61_83 {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga20h) * (ShardNumber: 61..83)
 }
 
 plan LabelPooled {

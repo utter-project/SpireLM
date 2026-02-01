@@ -100,11 +100,13 @@ def fix_fleurs_path(ex_dict, split):
     return join(dirname(alleged_path), path_split, basename(alleged_path))
 
 
-def load_features(feat_files=None, feat_dir=None):
+def load_features(feat_files=None, feat_dir=None, n_files=0):
     assert feat_dir is not None or feat_files is not None
     assert feat_dir is None or feat_files is None
 
     if feat_dir is not None:
         feat_files = glob(join(feat_dir, "*.npy"))
+        if n_files > 0:
+            feat_files = sorted(feat_files)[:n_files]
 
     return np.vstack([np.load(p) for p in feat_files])
