@@ -1,6 +1,20 @@
 global {
-    hubert_model="facebook/hubert-large-ll60k"
-    hubert_layer=22
+    hubert_model=(
+        KMModel:
+            spire="facebook/hubert-large-ll60k"
+            cv20h="facebook/hubert-large-ll60k"
+            giga20h="facebook/hubert-large-ll60k"
+            mhubert_25hz_cv20h="slprl/mhubert-base-25hz"
+            giga30h="facebook/hubert-large-ll60k"
+    )
+    hubert_layer=(
+        KMModel:
+            spire=22
+            cv20h=22
+            giga20h=22
+            mhubert_25hz_cv20h=11
+            giga30h=22
+    )
     hubert_dtype=(HubertDtype: fp32 bf16)
 
     km_model=(
@@ -8,6 +22,8 @@ global {
             spire="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000"
             cv20h="/mnt/scratch-artemis/bpop/single-malt-tokenizer-outputs/LearnKmeans/Dtype.bf16/model.joblib"
             giga20h="/mnt/scratch-artemis/bpop/single-malt-tokenizer-outputs/LearnKmeans/Corpus.gigaspeech+Dtype.bf16/model.joblib"
+            mhubert_25hz_cv20h="/mnt/scratch-artemis/bpop/single-malt-tokenizer-outputs/LearnKmeans/Dtype.bf16+SSLModel.mhubert_base_25hz/model.joblib"
+            giga30h="/mnt/scratch-artemis/bpop/single-malt-tokenizer-outputs/LearnKmeans/Corpus.gigaspeech+Dtype.bf16+NHours.30/model.joblib"
     )
 
     pooling_width=(PoolingWidth: 2 3)

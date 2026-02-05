@@ -284,14 +284,24 @@ task BleuCascaded
     sacrebleu --metrics bleu chrf --tokenize=flores200 $references < $hyps > $bleu
 }
 
-##### CV20 Experiments #####
+##### Giga20 Experiments #####
 
-plan DirectTranslationCV20 {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_cv20h_1200) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+plan DirectTranslationGiga20 {
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_giga20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
 }
 
 plan EvaluationCV20 {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_cv20h_1200) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_giga20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+}
+
+##### CV20 Experiments #####
+
+plan DirectTranslationCV20 {
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+}
+
+plan EvaluationCV20 {
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
 }
 
 ##### Tokenize audio for ST experiments #####

@@ -205,6 +205,72 @@ plan Lengths {
     reach ComputeLengths
 }
 
+plan DeduplicateImprovedGiga30h {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h)
+}
+
+plan DeduplicateImprovedGiga30h_1_10 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h) * (ShardNumber: 1..10)
+}
+
+plan DeduplicateImprovedGiga30h_11_20 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h) * (ShardNumber: 11..20)
+}
+
+plan DeduplicateImprovedGiga30h_1_20 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h) * (ShardNumber: 1..20)
+}
+
+plan DeduplicateImprovedGiga30h_21_40 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h) * (ShardNumber: 21..40)
+}
+
+plan DeduplicateImprovedGiga30h_41_60 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h) * (ShardNumber: 41..60)
+}
+
+plan DeduplicateImprovedGiga30h_41_45 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h) * (ShardNumber: 41..45)
+}
+
+plan DeduplicateImprovedGiga30h_46_50 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h) * (ShardNumber: 46..50)
+}
+
+plan DeduplicateImprovedGiga30h_51_55 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h) * (ShardNumber: 51..55)
+}
+
+plan DeduplicateImprovedGiga30h_56_60 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h) * (ShardNumber: 56..60)
+}
+
+plan DeduplicateImprovedGiga30h_61_83 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h) * (ShardNumber: 61..83)
+}
+
+
+
+plan DeduplicateImprovedMHCV20h {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: mhubert_25hz_cv20h)
+}
+
+plan DeduplicateImprovedMHCV20h_1_20 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: mhubert_25hz_cv20h) * (ShardNumber: 1..20)
+}
+
+plan DeduplicateImprovedMHCV20h_21_40 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: mhubert_25hz_cv20h) * (ShardNumber: 21..40)
+}
+
+plan DeduplicateImprovedMHCV20h_41_60 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: mhubert_25hz_cv20h) * (ShardNumber: 41..60)
+}
+
+plan DeduplicateImprovedMHCV20h_61_83 {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: mhubert_25hz_cv20h) * (ShardNumber: 61..83)
+}
+
 plan DeduplicateImprovedCV20h {
     reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: cv20h)
 }
