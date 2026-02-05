@@ -1,5 +1,3 @@
-# todo: make this about covost
-
 task GetAudioPathsAndCorpus
     > src_text=test.src
     > ref=test.ref
@@ -21,24 +19,6 @@ task GetAudioPathsAndCorpus
     cut -f 3 $covost_tsv | tail -n +2 > $ref
 }
 
-task GetCovostTrain
-    > src_text=train.src
-    > ref=train.ref
-    > audio=audio.txt
-    :: commonvoice_dir=@
-    :: covost_src=@
-    :: covost_tgt=@
-{
-    # this one doesn't call get_covost_splits.py, but rather assumes that they
-    # already exist.
-
-    covost_tsv="${commonvoice_dir}/covost_v2.${covost_src}_${covost_tgt}.train.tsv"
-    cut -f 1 $covost_tsv | tail -n +2 > $audio
-    cut -f 2 $covost_tsv | tail -n +2 > $src_text
-    cut -f 3 $covost_tsv | tail -n +2 > $ref
-}
-
-# This should replace everything up to ConvertTSV, I think
 task ConvertAudio
     < audio=@GetAudioPathsAndCorpus
     > wav_tsv=wav.tsv
@@ -72,40 +52,6 @@ task LabelAudio
         --batch-size 1000000 \
         --dtype $hubert_dtype \
         --token-batching
-}
-
-task ConvertTrainAudio
-    < audio=@GetCovostTrain
-    > wav_tsv=wav.tsv
-    > wav
-    :: commonvoice_dir=@
-    :: repo=@
-{
-    python $repo/scripts/convert_covost.py \
-        --audio-list $audio \
-        --audio-dir $commonvoice_dir/clips \
-        --output-dir $wav \
-        --output-tsv $wav_tsv
-}
-
-task LabelTrainAudio
-    < wav_tsv=@ConvertTrainAudio
-    > dsus=dsu.txt
-    :: hubert_model=@
-    :: hubert_layer=@
-    :: km_model=@
-    :: hubert_dtype=@
-    :: repo=@
-{
-    python $repo/scripts/label-audio.py \
-        --tsv_path $wav_tsv \
-        --out_path $dsus \
-        --ckpt_path $hubert_model \
-        --layer $hubert_layer \
-        --km_path $km_model \
-        --batch-size 1000000 \
-        --validate-examples \
-        --dtype $hubert_dtype
 }
 
 ##### Direct ST tasks #####
@@ -321,20 +267,6 @@ plan DirectTranslationCV20 {
 
 plan EvaluationCV20 {
     reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_zh)
-}
-
-##### Plans for getting DSUs of the train set (which is parallel between en-de and en-zh) #####
-
-plan GetTrain {
-    reach GetCovostTrain via (LanguagePair: en_de en_zh)
-}
-
-plan ConvertTrain {
-    reach ConvertTrainAudio
-}
-
-plan LabelizeTrain {
-    reach LabelTrainAudio
 }
 
 ##### Tokenize CoVoST2 #####
