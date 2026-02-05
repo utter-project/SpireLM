@@ -1,0 +1,13 @@
+{"asr": "Speech: {dsu_seq}\nEnglish:",
+ "en_ar": "Speech: {dsu_seq}\nArabic:",
+ "en_cs": "Speech: {dsu_seq}\nCzech:",
+ "en_de": "Speech: {dsu_seq}\nGerman:",
+ "en_es": "Speech: {dsu_seq}\nSpanish:",
+ "en_fr": "Speech: {dsu_seq}\nFrench:",
+ "en_it": "Speech: {dsu_seq}\nItalian:",
+ "en_ja": "Speech: {dsu_seq}\nJapanese:",
+ "en_ko": "Speech: {dsu_seq}\nKorean:",
+ "en_nl": "Speech: {dsu_seq}\nDutch:",
+ "en_pt": "Speech: {dsu_seq}\nPortuguese:",
+ "en_ru": "Speech: {dsu_seq}\nRussian:",
+ "en_zh": "Speech: {dsu_seq}\nChinese:"}
