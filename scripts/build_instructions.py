@@ -74,7 +74,6 @@ class STShotSampler(ShotSampler):
         self._template = "Speech: {example_src}\n {tgt_lang}: {example_tgt}"
         self._tgt_lang = tgt_lang
 
-
     def sample_template(self):
         example_src, example_tgt = self.sample()
         return self.template.format(
@@ -216,7 +215,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-tgt-len", type=int, default=None)
     parser.add_argument("--src-lang")
     parser.add_argument("--tgt-lang")
-    parser.add_argument("--template", choices=["mt_zero","mt_icl", "asr_simple", "st_simple"])
+    parser.add_argument("--template", choices=["mt_zero", "mt_icl", "asr_simple", "st_simple"])
     parser.add_argument("--chat-tokenizer", default=None)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()

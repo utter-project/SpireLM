@@ -2,8 +2,7 @@ import argparse
 from os.path import join
 
 import tqdm
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
-from datasets import load_dataset
+from transformers import pipeline
 
 
 def load_tsv(path):

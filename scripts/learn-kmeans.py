@@ -1,10 +1,7 @@
 import argparse
-from glob import glob
-from os.path import join
 
 import joblib
 from sklearn.cluster import MiniBatchKMeans
-import numpy as np
 
 from spire.utils import load_features
 
