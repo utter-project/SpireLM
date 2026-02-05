@@ -45,16 +45,6 @@ def deduplicate(tokens):
     return out_tokens
 
 
-def load_wav(path, device, expected_sample_rate=None):
-    feature_extractor = Wav2Vec2FeatureExtractor()
-    wav, sample_rate = sf.read(path, dtype="float32")
-    if expected_sample_rate is not None:
-        assert sample_rate == expected_sample_rate, "Expected sample rate {}, got {}".format(expected_sample_rate, sample_rate)
-
-    batch = feature_extractor(wav, sampling_rate=expected_sample_rate, return_tensors="pt").input_values.to(device)
-    return batch
-
-
 def detokenize(labels, indices_only=False, deduplicated=True):
     labels = labels.to("cpu").tolist()  # should be a list of lists
     labels = [[l for l in lab if l != -1] for lab in labels]

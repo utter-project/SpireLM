@@ -3,7 +3,7 @@ import torch.nn as nn
 import joblib
 from transformers import AutoModel, HubertModel, Wav2Vec2BertModel
 
-from spire.utils import load_wav, detokenize
+from spire.utils import detokenize
 
 
 def _pool_out_length(input_length, pooling_size, stride=None):
@@ -173,18 +173,3 @@ class Labeler(nn.Module):
         if output_mask is not None:
             labels.masked_fill_(~output_mask, -1)
         return labels
-
-    def label_wav(self, wav_path, **detok_args):
-        # read the audio into a batch
-        device = self.kmeans.C.device
-        batch = load_wav(
-            wav_path, device=device, expected_sample_rate=16000
-        )
-
-        # no attention mask because it's a single-element batch
-        labels = self.predict(batch)
-
-        # detokenize
-        detokenized_labels = detokenize(labels, **detok_args)
-
-        return detokenized_labels
