@@ -1,11 +1,9 @@
 from os.path import join
 from functools import partial
 
-from tqdm import tqdm
 import soundfile as sf
 import numpy as np
 from torch.utils.data import Dataset, Sampler, SequentialSampler, RandomSampler, BatchSampler, DataLoader
-from transformers import Wav2Vec2FeatureExtractor
 from datasets import load_from_disk, load_dataset, Audio
 
 

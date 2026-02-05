@@ -3,8 +3,6 @@ import torch.nn as nn
 import joblib
 from transformers import AutoModel, HubertModel, Wav2Vec2BertModel
 
-from spire.utils import detokenize
-
 
 def _pool_out_length(input_length, pooling_size, stride=None):
     # 1D convolutional layer output length formula taken

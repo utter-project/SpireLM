@@ -1,10 +1,8 @@
-from os.path import exists, join, basename, dirname
+from os.path import join
 from glob import glob
 import unicodedata
 
 import numpy as np
-import soundfile as sf
-from transformers import Wav2Vec2FeatureExtractor
 
 
 PRIVATE_OFFSET = 983040
