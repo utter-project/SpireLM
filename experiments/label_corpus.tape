@@ -205,6 +205,44 @@ plan Lengths {
     reach ComputeLengths
 }
 
+##### giga80h_pool4
+
+plan DDP4 {
+    reach DeduplicatePooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 4) * (BatchSeconds: 240) * (KMModel: giga80h_pool4)
+}
+
+plan LabelPooledGiga80hPool4 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 4) * (BatchSeconds: 240) * (KMModel: giga80h_pool4)
+}
+
+plan LabelPooledGiga80hPool4_1_10 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 4) * (BatchSeconds: 240) * (KMModel: giga80h_pool4) * (ShardNumber: 1..10)
+}
+
+plan LabelPooledGiga80hPool4_11_20 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 4) * (BatchSeconds: 240) * (KMModel: giga80h_pool4) * (ShardNumber: 11..20)
+}
+
+plan LabelPooledGiga80hPool4_1_20 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 4) * (BatchSeconds: 240) * (KMModel: giga80h_pool4) * (ShardNumber: 1..20)
+}
+
+plan LabelPooledGiga80hPool4_21_40 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 4) * (BatchSeconds: 240) * (KMModel: giga80h_pool4) * (ShardNumber: 21..40)
+}
+
+plan LabelPooledGiga80hPool4_41_60 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 4) * (BatchSeconds: 240) * (KMModel: giga80h_pool4) * (ShardNumber: 41..60)
+}
+
+plan LabelPooledGiga80hPool4_61_83 {
+    reach LabelCorpusPooled via (ShardNumber: *) * (HubertDtype: bf16) * (PoolingWidth: 4) * (BatchSeconds: 240) * (KMModel: giga80h_pool4) * (ShardNumber: 61..83)
+}
+
+#####
+
+
+
 plan DeduplicateImprovedGiga30h {
     reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: giga30h)
 }

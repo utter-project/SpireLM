@@ -231,7 +231,7 @@ def build_dataloader(
         path, feature_extractor, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
         n_examples=0, validate_examples=False, path_extra="en", hf_location="disk",
         hf_split="test", resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
-        token_batching=False, example_lengths=None):
+        token_batching=False, example_lengths=None, collator=None):
 
     # example_lengths is used to sort examples so that padding can be minimized.
     # This is useful for token batching. If passed, it should be a numpy array
@@ -253,7 +253,6 @@ def build_dataloader(
             start_ix=start_ix,
             n_examples=n_examples
         )
-        # dataset = SafeAudioDataset(dataset)
 
     if example_lengths is not None:
         lengths = np.load(example_lengths)[start_ix: start_ix + n_examples]
@@ -265,8 +264,10 @@ def build_dataloader(
     print("Dataset length: {}".format(length_before_validating))
 
     # build the collator
-    collate_func = collate_fn if dataset_type == "tsv" else collate_hf
-    collator = partial(collate_func, feature_extractor=feature_extractor)
+    if collator is None:
+        # if no custom collator is provided, use one of the ones defined in this file
+        collate_func = collate_fn if dataset_type == "tsv" else collate_hf
+        collator = partial(collate_func, feature_extractor=feature_extractor)
 
     if token_batching:
         if dataset_type == "tsv":

@@ -6,6 +6,7 @@ global {
             giga20h="facebook/hubert-large-ll60k"
             mhubert_25hz_cv20h="slprl/mhubert-base-25hz"
             giga30h="facebook/hubert-large-ll60k"
+            giga80h_pool4="facebook/hubert-large-ll60k"
     )
     hubert_layer=(
         KMModel:
@@ -14,6 +15,7 @@ global {
             giga20h=22
             mhubert_25hz_cv20h=11
             giga30h=22
+            giga80h_pool4=22
     )
     hubert_dtype=(HubertDtype: fp32 bf16)
 
@@ -24,9 +26,10 @@ global {
             giga20h="/mnt/scratch-artemis/bpop/single-malt-tokenizer-outputs/LearnKmeans/Corpus.gigaspeech+Dtype.bf16/model.joblib"
             mhubert_25hz_cv20h="/mnt/scratch-artemis/bpop/single-malt-tokenizer-outputs/LearnKmeans/Dtype.bf16+SSLModel.mhubert_base_25hz/model.joblib"
             giga30h="/mnt/scratch-artemis/bpop/single-malt-tokenizer-outputs/LearnKmeans/Corpus.gigaspeech+Dtype.bf16+NHours.30/model.joblib"
+            giga80h_pool4="/mnt/scratch-artemis/bpop/single-malt-tokenizer-outputs/LearnKmeans/Corpus.gigaspeech+Dtype.bf16+NHours.80+PoolingWidth.4/model.joblib"
     )
 
-    pooling_width=(PoolingWidth: 2 3)
+    pooling_width=(PoolingWidth: 2 3 4)
     pooling_type=(PoolingType: mean max)
 
     ssl_batch_size=(BatchSize: 4 1 8 16)

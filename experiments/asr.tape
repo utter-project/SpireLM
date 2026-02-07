@@ -61,50 +61,6 @@ task Decode
 
 }
 
-task DecodeSeamless
-    < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
-    > hyps=hyps.txt
-    :: speech2text_model=@
-    :: speech2text_tokenizer=@
-    :: max_tokens=@
-    :: seamless_batch_size=@
-    :: repo=@
-{
-    python $repo/scripts/inference.py \
-        --inpaths $wav_tsv \
-        --outpaths $hyps \
-        --model $speech2text_model \
-        --tokenizer $speech2text_tokenizer \
-        --backend hf \
-        --max-length $max_tokens \
-        --src-lang eng \
-        --tgt-lang eng \
-        --input-format wav_tsv \
-        --batch-size $seamless_batch_size \
-        --model-type encdec-speech \
-        --backend hf \
-        --seamless-input-type speech
-
-}
-
-task DecodeWhisper
-    < wav_tsv=(ASRDataset: ls_clean=$wav_tsv@ConvertTSV ls_other=$wav_tsv@ConvertTSV fleurs=$tsv@BuildNativeTSV voxpopuli=$tsv@BuildNativeTSV)
-    > hyps=hyps.txt
-    :: speech2text_model=@
-    :: speech2text_tokenizer=@
-    :: max_tokens=@
-    :: whisper_batch_size=@
-    :: repo=@
-{
-    python $repo/scripts/whisper_inference.py \
-        --input-tsv $wav_tsv \
-        --outpath $hyps \
-        --model $speech2text_model \
-        --tokenizer $speech2text_tokenizer \
-        --max-length $max_tokens \
-        --batch-size $whisper_batch_size
-}
-
 task DumpASRText
     > references=references.txt
     > metadata=metadata.json
@@ -121,7 +77,7 @@ task DumpASRText
 }
 
 task NormalizeHyps
-    < hyps=(ModelFamily: tower=$hyps@Decode seamless=$hyps@DecodeSeamless whisper=$hyps@DecodeWhisper)
+    < hyps=@Decode
     > hyps_normalized=hyps.txt.norm
     :: normalizer=@
     :: repo=@
@@ -164,91 +120,75 @@ plan LabelizeBF16 {
 ##### giga30 Experiments #####
 
 plan DecodeGiga30 {
-    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: lmt_4B_giga30h_1200 lmt_4B_giga30h_2400) * (KMModel: giga30h) * (HubertDtype: bf16)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga30h_1200 lmt_4B_giga30h_2400) * (KMModel: giga30h) * (HubertDtype: bf16)
 }
 
 plan ComputeWERGiga30 {
-    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: lmt_4B_giga30h_1200 lmt_4B_giga30h_2400) * (KMModel: giga30h) * (HubertDtype: bf16)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga30h_1200 lmt_4B_giga30h_2400) * (KMModel: giga30h) * (HubertDtype: bf16)
 }
 
 ##### mh-CV20 Experiments #####
 
 plan DecodeMHCV20 {
-    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: lmt_4B_mh_cv20h_2000) * (KMModel: mhubert_25hz_cv20h) * (HubertDtype: bf16)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_mh_cv20h_2000 lmt_4B_mh_cv20h) * (KMModel: mhubert_25hz_cv20h) * (HubertDtype: bf16)
 }
 
 plan ComputeWERMHCV20 {
-    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: lmt_4B_mh_cv20h_2000) * (KMModel: mhubert_25hz_cv20h) * (HubertDtype: bf16)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_mh_cv20h_2000 lmt_4B_mh_cv20h) * (KMModel: mhubert_25hz_cv20h) * (HubertDtype: bf16)
 }
 
 ##### giga20 Experiments #####
 
 plan DecodeGiga20 {
-    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600) * (KMModel: giga20h) * (HubertDtype: bf16)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600) * (KMModel: giga20h) * (HubertDtype: bf16)
 }
 
 plan ComputeWERGiga20 {
-    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600) * (KMModel: giga20h) * (HubertDtype: bf16)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600) * (KMModel: giga20h) * (HubertDtype: bf16)
 }
 
 ##### CV20 Experiments #####
 
 plan DecodeCV20 {
-    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600 lmt_4B_cv20h_5600) * (KMModel: cv20h) * (HubertDtype: bf16)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600 lmt_4B_cv20h_5600) * (KMModel: cv20h) * (HubertDtype: bf16)
 }
 
 plan ComputeWERCV20 {
-    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600 lmt_4B_cv20h_5600) * (KMModel: cv20h) * (HubertDtype: bf16)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600 lmt_4B_cv20h_5600) * (KMModel: cv20h) * (HubertDtype: bf16)
 }
 
 ##### Hypothesis Generation #####
 
 plan DecodeAll {
-    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: *)
 }
 
 plan DecodeSpireFull {
-    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: spire_full)
 }
 
 plan DecodeSpireFullBF16 {
-    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full) * (HubertDtype: bf16)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: spire_full) * (HubertDtype: bf16)
 }
 
 plan DecodeTowerSpire {
-    reach Decode via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_base spire_full spire_no_pseudo spire_no_blocks tower_full)
-}
-
-plan DecodeSL {
-    reach DecodeSeamless via (ASRDataset: *) * (ModelFamily: seamless) * (Speech2TextModel: seamless)
-}
-
-plan DecodeWh {
-    reach DecodeWhisper via (ASRDataset: *) * (ModelFamily: whisper) * (Speech2TextModel: whisper whisper_medium whisper_small whisper_base)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: spire_base spire_full spire_no_pseudo spire_no_blocks tower_full)
 }
 
 ##### Evaluation #####
 
 plan ComputeWERAll {
-    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: *)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: *)
 }
 
 plan ComputeWERSpireFull {
-    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: spire_full)
 }
 
 plan ComputeWERSpireFullBF16 {
-    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_full) * (HubertDtype: bf16)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: spire_full) * (HubertDtype: bf16)
 }
 
 plan ComputeWERTowerSpire {
-    reach ComputeWER via (ASRDataset: *) * (ModelFamily: tower) * (Speech2TextModel: spire_base spire_full spire_no_pseudo spire_no_blocks tower_full)
-}
-
-plan ComputeSeamlessWER {
-    reach ComputeWER via (ASRDataset: *) * (ModelFamily: seamless) * (Speech2TextModel: seamless)
-}
-
-plan ComputeWhisperWER {
-    reach ComputeWER via (ASRDataset: *) * (ModelFamily: whisper) * (Speech2TextModel: whisper whisper_medium whisper_small whisper_base)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: spire_base spire_full spire_no_pseudo spire_no_blocks tower_full)
 }
