@@ -120,11 +120,11 @@ plan LabelizeBF16 {
 ##### giga30 Experiments #####
 
 plan DecodeGiga30 {
-    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga30h_1200 lmt_4B_giga30h_2400) * (KMModel: giga30h) * (HubertDtype: bf16)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga30h_1200 lmt_4B_giga30h_2400 lmt_4B_giga30h) * (KMModel: giga30h) * (HubertDtype: bf16)
 }
 
 plan ComputeWERGiga30 {
-    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga30h_1200 lmt_4B_giga30h_2400) * (KMModel: giga30h) * (HubertDtype: bf16)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga30h_1200 lmt_4B_giga30h_2400 lmt_4B_giga30h) * (KMModel: giga30h) * (HubertDtype: bf16)
 }
 
 ##### mh-CV20 Experiments #####
@@ -140,21 +140,21 @@ plan ComputeWERMHCV20 {
 ##### giga20 Experiments #####
 
 plan DecodeGiga20 {
-    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600) * (KMModel: giga20h) * (HubertDtype: bf16)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600 lmt_4B_giga20h) * (KMModel: giga20h) * (HubertDtype: bf16)
 }
 
 plan ComputeWERGiga20 {
-    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600) * (KMModel: giga20h) * (HubertDtype: bf16)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600 lmt_4B_giga20h) * (KMModel: giga20h) * (HubertDtype: bf16)
 }
 
 ##### CV20 Experiments #####
 
 plan DecodeCV20 {
-    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600 lmt_4B_cv20h_5600) * (KMModel: cv20h) * (HubertDtype: bf16)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600 lmt_4B_cv20h_5600 lmt_4B_cv20h) * (KMModel: cv20h) * (HubertDtype: bf16)
 }
 
 plan ComputeWERCV20 {
-    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600 lmt_4B_cv20h_5600) * (KMModel: cv20h) * (HubertDtype: bf16)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600 lmt_4B_cv20h_5600 lmt_4B_cv20h) * (KMModel: cv20h) * (HubertDtype: bf16)
 }
 
 ##### Hypothesis Generation #####

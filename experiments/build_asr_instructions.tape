@@ -5,12 +5,13 @@ task BuildASRInstructions
     :: path_extra=@
     :: template=@
     :: transcript_column=@
+    :: external_transcript_column=@
     :: external_transcript=@
     :: repo=@
 {
     extra_args=""
     if [[ $external_transcript != "" ]] ; then
-        extra_args="--external-transcript ${external_transcript}"
+        extra_args="--external-transcripts ${external_transcript}"
     fi
     python $repo/scripts/build_dsu_training.py \
         --dsus $dsus_for_asr \
@@ -19,6 +20,7 @@ task BuildASRInstructions
         --audio-dataset \
         --split train \
         --transcript-column $transcript_column \
+        --external-transcript-column $external_transcript_column \
         --templates $template \
         --template-key asr \
         --instructions $instructions \
