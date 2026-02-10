@@ -25,7 +25,7 @@ def iterate_over_files(paths):
                 yield line
 
 
-def load_transcripts(transcripts, transcript_column="text"):
+def load_librispeech_pc_transcripts(transcripts, transcript_column="text"):
     id2transcript = dict()
     with open(transcripts) as f:
         for line in f:
@@ -36,13 +36,30 @@ def load_transcripts(transcripts, transcript_column="text"):
     return id2transcript
 
 
-def add_external_transcripts(dataset, transcript_path, transcript_column="text"):
-    id2transcript = load_transcripts(transcript_path, transcript_column=transcript_column)
-    # hardcoded id column
-    transcripts = [id2transcript.get(ex_id, "") for ex_id in dataset["id"]]
+def load_simple_transcripts(transcripts, transcript_column="text"):
+    out_transcripts = []
+    with open(transcripts) as f:
+        for line in f:
+            transcript_metadata = json.loads(line)
+            out_transcripts.append(transcript_metadata[transcript_column])
+    return out_transcripts
+
+
+def add_external_transcripts(dataset, transcript_path, transcript_in_column="text", librispeech_pc=False):
+
+    # this block: librispeech-pc case
+    if librispeech_pc:
+        id2transcript = load_librispeech_pc_transcripts(transcript_path, transcript_column=transcript_in_column)
+        transcripts = [id2transcript.get(ex_id, "") for ex_id in dataset["id"]]  # hardcoded id column
+    else:
+        # simpler, complete transcript loading
+        transcripts = load_simple_transcripts(transcript_path, transcript_column=transcript_in_column)
+
+
     dataset = dataset.add_column("external_transcript", transcripts)
     dataset = dataset.filter(lambda ex: len(ex["external_transcript"]) > 0)
     return dataset
+
 
 
 def make_instruction(dsu_seq, transcript, speech_turn="Speech: {dsu_seq}\nEnglish:"):
@@ -114,7 +131,11 @@ def main(args):
     # now: add external transcripts (if relevant)
     if args.external_transcripts is not None:
         # adding external transcripts may also mean filtering
-        dataset = add_external_transcripts(dataset, args.external_transcripts)
+        dataset = add_external_transcripts(
+            dataset,
+            args.external_transcripts,
+            transcript_in_column=args.external_transcript_column,
+            librispeech_pc="librispeech-pc" in args.external_transcripts)
 
     # now: filtering (if relevant)
     # also to consider: filtering invalid rows (as in LibriSpeech-PC)
@@ -154,7 +175,8 @@ if __name__ == "__main__":
     parser.add_argument("--path-extra")
     parser.add_argument("--split")
     parser.add_argument("--transcript-column", default="text")  # "raw_text" for VoxPopuli
-    parser.add_argument("--external-transcripts", help="For LibriSpeech-PC")
+    parser.add_argument("--external-transcript-column", default="text")
+    parser.add_argument("--external-transcripts", help="For LibriSpeech-PC and People's Speech")
     parser.add_argument("--instructions", default="instructions.jsonl")
     parser.add_argument("--min-columns", nargs="*", default=[])
     parser.add_argument("--min-column-values", nargs="*", default=[], type=float)
