@@ -58,7 +58,6 @@ class SafeAudioDataset(Dataset):
 
     def __getitem__(self, idx):
         try:
-            # MUST be inside try
             ex = self.ds[idx]
             return ex
         except sf.LibsndfileError:
@@ -231,7 +230,7 @@ def build_dataloader(
         path, feature_extractor, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
         n_examples=0, validate_examples=False, path_extra="en", hf_location="disk",
         hf_split="test", resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
-        token_batching=False, example_lengths=None, collator=None):
+        token_batching=False, example_lengths=None, collator=None, placeholder_len=0):
 
     # example_lengths is used to sort examples so that padding can be minimized.
     # This is useful for token batching. If passed, it should be a numpy array
@@ -282,7 +281,7 @@ def build_dataloader(
 
     if dataset_type != "tsv":
         # in theory, this should make it possible to handle missing audio gracefully
-        dataset = SafeAudioDataset(dataset)
+        dataset = SafeAudioDataset(dataset, placeholder_len=placeholder_len)
     loader = DataLoader(
         dataset,
         num_workers=num_workers,

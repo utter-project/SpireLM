@@ -249,24 +249,34 @@ plan Convert {
     reach ConvertAudio via (LanguagePair: en_de en_zh)
 }
 
+##### Giga30 Experiments #####
+
+plan DirectTranslationGiga30 {
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_giga30h) * (HubertDtype: bf16) * (KMModel: giga30h) * (LanguagePair: en_de en_zh)
+}
+
+plan EvaluationGiga30 {
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_giga30h) * (HubertDtype: bf16) * (KMModel: giga30h) * (LanguagePair: en_de en_zh)
+}
+
 ##### Giga20 Experiments #####
 
 plan DirectTranslationGiga20 {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600) * (HubertDtype: bf16) * (KMModel: giga20h) * (LanguagePair: en_de en_zh)
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600 lmt_4B_giga20h) * (HubertDtype: bf16) * (KMModel: giga20h) * (LanguagePair: en_de en_zh)
 }
 
 plan EvaluationGiga20 {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600) * (HubertDtype: bf16) * (KMModel: giga20h) * (LanguagePair: en_de en_zh)
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_giga20h_2000 lmt_4B_giga20h_2400 lmt_4B_giga20h_4000 lmt_4B_giga20h_4400 lmt_4B_giga20h_5600 lmt_4B_giga20h) * (HubertDtype: bf16) * (KMModel: giga20h) * (LanguagePair: en_de en_zh)
 }
 
 ##### CV20 Experiments #####
 
 plan DirectTranslationCV20 {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_zh)
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600 lmt_4B_cv20h) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_zh)
 }
 
 plan EvaluationCV20 {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_zh)
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000 lmt_4B_cv20h_3600 lmt_4B_cv20h) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_zh)
 }
 
 ##### Tokenize CoVoST2 #####
