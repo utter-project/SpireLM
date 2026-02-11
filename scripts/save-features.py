@@ -51,7 +51,8 @@ def main(args):
         hf_location="disk" if args.dataset_type == "hf-disk" else "cache",
         shuffle=True,
         torch_random=torch_random,
-        pin_memory=not args.cpu
+        pin_memory=not args.cpu,
+        filter_mic=args.filter_mic
     )
 
     # past: specified hour-long shards by multiplying hubert fps by 3600
@@ -141,5 +142,6 @@ if __name__ == "__main__":
     parser.add_argument("--hours-per-shard", type=float, default=1.)
     parser.add_argument("--pooling-width", type=int, default=1, help="1 recovers no pooling")
     parser.add_argument("--pooling-type", choices=["mean", "max"], default="mean")
+    parser.add_argument("--filter-mic", default=None)
     args = parser.parse_args()
     main(args)

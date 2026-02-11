@@ -1,4 +1,4 @@
-from os.path import join
+from os.path import join, basename, splitext
 from functools import partial
 
 import soundfile as sf
@@ -195,7 +195,7 @@ class TokenBatchSampler(BatchSampler):
 def load_hf_audio_dataset(
         path, path_extra="", split="train",
         resample_to=None, from_disk=True,
-        start_ix=0, n_examples=0, remove_audio=False, add_index=False):
+        start_ix=0, n_examples=0, remove_audio=False, add_index=False, filter_mic=None):
 
     if from_disk:
         if "openslr/librispeech_asr" in path:
@@ -223,6 +223,14 @@ def load_hf_audio_dataset(
     if add_index:
         dataset = dataset.add_column(name="idx", column=list(range(len(dataset))))
 
+    if path == "CSTR-Edinburgh/vctk":
+        # this is hardcoding, but it's a salient fact for a useful dataset.
+        audio_paths = dataset.remove_columns("audio")["file"]
+        mic = [splitext(basename(audio_path))[0].split("_")[-1] for audio_path in audio_paths]
+        dataset = dataset.add_column(name="mic", column=mic)
+        if filter_mic is not None:
+            dataset = dataset.filter(lambda ex: ex["mic"] == filter_mic)
+
     return dataset
 
 
@@ -230,7 +238,8 @@ def build_dataloader(
         path, feature_extractor, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
         n_examples=0, validate_examples=False, path_extra="en", hf_location="disk",
         hf_split="test", resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
-        token_batching=False, example_lengths=None, collator=None, placeholder_len=0):
+        token_batching=False, example_lengths=None, collator=None, placeholder_len=0,
+        filter_mic=None):
 
     # example_lengths is used to sort examples so that padding can be minimized.
     # This is useful for token batching. If passed, it should be a numpy array
@@ -250,7 +259,8 @@ def build_dataloader(
             from_disk=hf_location == "disk",
             add_index=True,
             start_ix=start_ix,
-            n_examples=n_examples
+            n_examples=n_examples,
+            filter_mic=filter_mic
         )
 
     if example_lengths is not None:
