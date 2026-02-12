@@ -238,6 +238,48 @@ plan Lengths {
     reach ComputeLengths
 }
 
+##### vctk_mic1_30h
+
+plan DD_VCTK_Mic1_30h {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: vctk_mic1_30h)
+}
+
+plan LabelVCTK_Mic1_30h {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: vctk_mic1_30h)
+}
+
+plan LabelVCTK_Mic1_30h_1_10 {
+    reach LabelCorpusImproved via (ShardNumber: 1..10) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: vctk_mic1_30h)
+}
+
+plan LabelVCTK_Mic1_30h_11_20 {
+    reach LabelCorpusImproved via (ShardNumber: 11..20) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: vctk_mic1_30h)
+}
+
+plan LabelVCTK_Mic1_30h_21_30 {
+    reach LabelCorpusImproved via (ShardNumber: 21..30) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: vctk_mic1_30h)
+}
+
+plan LabelVCTK_Mic1_30h_31_40 {
+    reach LabelCorpusImproved via (ShardNumber: 31..40) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: vctk_mic1_30h)
+}
+
+plan LabelVCTK_Mic1_30h_41_50 {
+    reach LabelCorpusImproved via (ShardNumber: 41..50) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: vctk_mic1_30h)
+}
+
+plan LabelVCTK_Mic1_30h_51_60 {
+    reach LabelCorpusImproved via (ShardNumber: 51..60) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: vctk_mic1_30h)
+}
+
+plan LabelVCTK_Mic1_30h_61_70 {
+    reach LabelCorpusImproved via (ShardNumber: 61..70) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: vctk_mic1_30h)
+}
+
+plan LabelVCTK_Mic1_30h_71_83 {
+    reach LabelCorpusImproved via (ShardNumber: 71..83) * (HubertDtype: bf16) * (BatchSeconds: 240) * (KMModel: vctk_mic1_30h)
+}
+
 ##### giga80h_pool4
 
 plan DDP4 {
