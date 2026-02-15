@@ -218,4 +218,48 @@ global {
             ru_en=en
             zh_en=en
     )
+
+    language_pair=(
+        LanguagePair:
+            en_de
+            en_es
+            en_fr
+            en_it
+            en_ko
+            en_nl
+            en_pt
+            en_ru
+            en_zh
+            de_en
+            es_en
+            fr_en
+            it_en
+            ko_en
+            nl_en
+            pt_en
+            ru_en
+            zh_en
+    )
+
+    sonar_tgt=(
+        LanguagePair:
+            en_de=deu_Latn
+            en_es=spa_Latn
+            en_fr=fra_Latn
+            en_it=ita_Latn
+            en_ko=kor_Hang
+            en_nl=nld_Latn
+            en_pt=por_Latn
+            en_ru=rus_Cyrl
+            en_zh=zho_Hans
+            de_en=eng_Latn
+            es_en=eng_Latn
+            fr_en=eng_Latn
+            it_en=eng_Latn
+            ko_en=eng_Latn
+            nl_en=eng_Latn
+            pt_en=eng_Latn
+            ru_en=eng_Latn
+            zh_en=eng_Latn
+    )
 }

@@ -117,6 +117,16 @@ plan LabelizeBF16 {
     reach LabelAudio via (ASRDataset: *) * (HubertDtype: bf16)
 }
 
+##### vctk30 Experiments #####
+
+plan DecodeVCTK30 {
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_vctk30h_400 lmt_4B_vctk30h_3600) * (KMModel: vctk_mic1_30h) * (HubertDtype: bf16)
+}
+
+plan ComputeWERVCTK30 {
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_vctk30h_400 lmt_4B_vctk30h_3600) * (KMModel: vctk_mic1_30h) * (HubertDtype: bf16)
+}
+
 ##### giga30 Experiments #####
 
 plan DecodeGiga30 {

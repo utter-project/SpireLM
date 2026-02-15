@@ -34,3 +34,7 @@ task BuildASRInstructions
 plan BuildASR {
     reach BuildASRInstructions via (Corpus: *)
 }
+
+plan BuildASRExplicit {
+    reach BuildASRInstructions via (Corpus: *) * (Template: explicit)
+}

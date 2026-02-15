@@ -59,3 +59,15 @@ plan BuildSpiteTP {
 plan BuildCVASR {
     reach BuildSpiteASRInstructions via (CorpusForPseudolabeling: commonvoice)
 }
+
+plan BuildSpiteExplicit {
+    reach BuildSpiteInstructions via (CorpusForPseudolabeling: *) * (Model: *) * (LanguagePair: *) * (Template: explicit)
+}
+
+plan BuildSpiteTPExplicit {
+    reach BuildSpiteInstructions via (CorpusForPseudolabeling: *) * (Model: tp) * (LanguagePair: *) * (Template: explicit)
+}
+
+plan BuildCVASRExplicit {
+    reach BuildSpiteASRInstructions via (CorpusForPseudolabeling: commonvoice) * (Template: explicit)
+}
