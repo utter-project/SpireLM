@@ -1,6 +1,7 @@
 from os.path import join
 from glob import glob
 import unicodedata
+import json
 
 import numpy as np
 
@@ -65,3 +66,14 @@ def load_features(feat_files=None, feat_dir=None, n_files=0):
             feat_files = sorted(feat_files)[:n_files]
 
     return np.vstack([np.load(p) for p in feat_files])
+
+
+def load_template(template_path, key):
+    if template_path is not None:
+        with open(template_path) as f:
+            speech_turn = json.load(f)[key]
+    else:
+        # Minimalistic default prompt, which is ambiguous between English ASR
+        # and to-English ST
+        speech_turn = "Speech: {dsu_seq}\nEnglish:"
+    return speech_turn

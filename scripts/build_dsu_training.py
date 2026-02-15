@@ -16,6 +16,7 @@ from tqdm import tqdm
 import numpy as np
 from datasets import load_dataset, disable_caching
 from spire.data import load_hf_audio_dataset
+from spire.utils import load_template
 
 
 def iterate_over_files(paths):
@@ -99,13 +100,7 @@ def compute_stats(spite_dataset):
 
 
 def main(args):
-    if args.templates is not None:
-        with open(args.templates) as f:
-            speech_turn = json.load(f)[args.template_key]
-    else:
-        # Minimalistic default prompt, which is ambiguous between English ASR
-        # and to-English ST
-        speech_turn = "Speech: {dsu_seq}\nEnglish:"
+    speech_turn = load_template(args.templates, args.template_key)
 
     if args.audio_dataset:
         disable_caching()
