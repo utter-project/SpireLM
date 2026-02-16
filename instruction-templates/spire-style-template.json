@@ -10,4 +10,6 @@
  "en_nl": "Speech: {dsu_seq}\nDutch:",
  "en_pt": "Speech: {dsu_seq}\nPortuguese:",
  "en_ru": "Speech: {dsu_seq}\nRussian:",
- "en_zh": "Speech: {dsu_seq}\nChinese:"}
+ "en_zh": "Speech: {dsu_seq}\nChinese:",
+ "mt": "Translate the following text from {src_lang} to {tgt_lang}.\n{src_lang}: {example}\n{tgt_lang}:"
+}
