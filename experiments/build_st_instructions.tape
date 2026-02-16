@@ -8,6 +8,9 @@ task BuildSpiteInstructions
     :: min_cometqe=@
     :: min_blaser2_src=@
     :: min_audio_length=@
+    :: topk_examples=@
+    :: topk_column=@
+    :: topk_mode=@
     :: repo=@
 {
     python $repo/scripts/build_dsu_training.py \
@@ -21,6 +24,9 @@ task BuildSpiteInstructions
         --templates $template \
         --template-key $language_pair \
         --instructions $instructions \
+        --topk-examples $topk_examples \
+        --topk-column $topk_column \
+        --topk-mode $topk_mode \
         --spite-stats $stats
 }
 
@@ -56,6 +62,10 @@ plan BuildSpiteTP {
     reach BuildSpiteInstructions via (CorpusForPseudolabeling: *) * (Model: tp) * (LanguagePair: *)
 }
 
+plan BuildSpiteTPTopComet {
+    reach BuildSpiteInstructions via (CorpusForPseudolabeling: *) * (Model: tp) * (LanguagePair: *)
+}
+
 plan BuildCVASR {
     reach BuildSpiteASRInstructions via (CorpusForPseudolabeling: commonvoice)
 }
@@ -70,4 +80,10 @@ plan BuildSpiteTPExplicit {
 
 plan BuildCVASRExplicit {
     reach BuildSpiteASRInstructions via (CorpusForPseudolabeling: commonvoice) * (Template: explicit)
+}
+
+##### Here: preliminary filtering experiment. Constant number of examples, gigaspeech en-de only
+
+plan BuildSpiteTPTopK {
+    reach BuildSpiteInstructions via (CorpusForPseudolabeling: gigaspeech) * (Model: tp) * (LanguagePair: en_de) * (TopK: *) * (TopKColumn: *)
 }
