@@ -59,18 +59,18 @@ task LabelAudio
 task BuildDirectInstructions
     < test_dsus=$dsus@LabelAudio
     > instructions=instructions.json
-    :: st_template=@
     :: speech2text_tokenizer=@
-    :: tgt_name=@
+    :: template=@
+    :: language_pair=@
     :: repo=@
 {
-    # template, language pair, number of shots
+    # template, language pair
     python $repo/scripts/build_instructions.py \
         --src $test_dsus \
-        --template $st_template \
-        --n-shots 0 \
-        --chat-tokenizer $speech2text_tokenizer \
-        --tgt-lang $tgt_name \
+        --src-names dsu_seq \
+        --templates $template \
+        --template-key $language_pair \
+        --tokenizer $speech2text_tokenizer \
         --out $instructions
 }
 
@@ -88,9 +88,7 @@ task DecodeDirect
         --outpaths $hyps \
         --model $speech2text_model \
         --tokenizer $speech2text_tokenizer \
-        --backend $backend \
         --max-length $max_tokens
-
 }
 
 task CometDirect

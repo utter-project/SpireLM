@@ -29,16 +29,17 @@ task LabelAudio
 task BuildInstructions
     < test_dsus=$dsus@LabelAudio
     > instructions=instructions.json
-    :: template=@
     :: speech2text_tokenizer=@
+    :: template=@
     :: repo=@
 {
-    # template, language pair, number of shots
+    # template, language pair
     python $repo/scripts/build_instructions.py \
         --src $test_dsus \
-        --template $template \
-        --n-shots 0 \
-        --chat-tokenizer $speech2text_tokenizer \
+        --src-names dsu_seq \
+        --templates $template \
+        --template-key asr \
+        --tokenizer $speech2text_tokenizer \
         --out $instructions
 }
 
@@ -48,7 +49,6 @@ task Decode
     :: speech2text_model=@
     :: speech2text_tokenizer=@
     :: max_tokens=@
-    :: backend=@
     :: repo=@
 {
     python $repo/scripts/inference.py \
@@ -56,9 +56,7 @@ task Decode
         --outpaths $hyps \
         --model $speech2text_model \
         --tokenizer $speech2text_tokenizer \
-        --backend $backend \
         --max-length $max_tokens
-
 }
 
 task DumpASRText
