@@ -205,58 +205,12 @@ plan Lengths {
     reach ComputeLengths
 }
 
-# I would prefer if the sonar/blaser tasks were not in this file, but it was
-# convenient
-task ComputeSonarSpeechVectors
-    < times=@ComputeLengths
-    > sonar_vectors=sonar.npy
-    :: dataset_path=@
-    :: dataset_type=@
-    :: path_extra=@
-    :: shard_number=@
-    :: shard_size=@
-    :: hf_split=@
-    :: batch_seconds=@
-    :: repo=@
-{
-    start_ix=$(( ($shard_number - 1) * $shard_size))
-    extra_args=""
-    if [[ $path_extra != "" ]] ; then
-        extra_args="--path-extra ${path_extra}"
-    fi
-    python $repo/scripts/save-sonar-features.py \
-        --sonar-speech-encoder sonar_speech_encoder_eng \
-        --data-path $dataset_path \
-        --dataset-type $dataset_type \
-        --save-vectors $sonar_vectors \
-        --batch-size $batch_seconds \
-        --num-workers 0 \
-        --start-ix $start_ix \
-        --n-examples $shard_size \
-        --hf-split $hf_split \
-        --resample-to 16000 \
-        --token-batching \
-        --example-lengths $times \
-        $extra_args
+plan DDQuick {
+    reach DeduplicateImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240)
 }
 
-task ComputeBlaser2
-    < sonar_vectors=@ComputeSonarSpeechVectors
-    > scores=blaser2.npy
-    :: language_pair=@
-    :: flores_tgt=@
-    :: shard_number=@
-    :: shard_size=@
-    :: repo=@
-{
-    start_ix=$(( ($shard_number - 1) * $shard_size))
-    python $repo/scripts/compute_blaser2.py \
-        --dataset-path bpop/spite-CV16-Euro9B \
-        --dataset-path-extra $language_pair \
-        --lang $flores_tgt \
-        --n-examples 100000 \
-        --audio-sonar $sonar_vectors \
-        --out_path $scores
+plan LabelQuick {
+    reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240)
 }
 
 ##### vctk_mic1_30h
