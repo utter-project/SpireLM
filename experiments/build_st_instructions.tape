@@ -8,26 +8,32 @@ task BuildSpiteInstructions
     :: min_cometqe=@
     :: min_blaser2_src=@
     :: min_audio_length=@
+    :: min_blaser2_mt=@
     :: topk_examples=@
     :: topk_column=@
     :: topk_mode=@
     :: repo=@
 {
+    extra_args=""
+    if [[ $topk_column != "" ]] ; then
+        extra_args="--topk-column ${topk_column}"
+    fi
+
     python $repo/scripts/build_dsu_training.py \
         --dsus $dsus_for_pseudolabeling \
         --dataset-path $dataset \
         --path-extra $language_pair \
         --split train \
         --transcript-column mt \
-        --min-columns cometqe_22 blaser2_src audio_length \
-        --min-column-values $min_cometqe $min_blaser2_src $min_audio_length \
+        --min-columns cometqe_22 blaser2_src audio_length blaser2_mt \
+        --min-column-values $min_cometqe $min_blaser2_src $min_audio_length $min_blaser2_mt \
         --templates $template \
         --template-key $language_pair \
         --instructions $instructions \
         --topk-examples $topk_examples \
-        --topk-column $topk_column \
         --topk-mode $topk_mode \
-        --spite-stats $stats
+        --spite-stats $stats \
+        $extra_args
 }
 
 task BuildSpiteASRInstructions
@@ -54,15 +60,15 @@ task BuildSpiteASRInstructions
         --instructions $instructions
 }
 
+plan BuildSpiteTPBlaser2 {
+    reach BuildSpiteInstructions via (CorpusForPseudolabeling: *) * (Model: tp) * (LanguagePair: *) * (MinCometQE: 0) * (MinBlaser2Src: 0) * (MinAudioLength: 0) * (MinBlaser2MT: 4.5)
+}
+
 plan BuildSpite {
     reach BuildSpiteInstructions via (CorpusForPseudolabeling: *) * (Model: *) * (LanguagePair: *)
 }
 
 plan BuildSpiteTP {
-    reach BuildSpiteInstructions via (CorpusForPseudolabeling: *) * (Model: tp) * (LanguagePair: *)
-}
-
-plan BuildSpiteTPTopComet {
     reach BuildSpiteInstructions via (CorpusForPseudolabeling: *) * (Model: tp) * (LanguagePair: *)
 }
 
@@ -86,4 +92,8 @@ plan BuildCVASRExplicit {
 
 plan BuildSpiteTPTopK {
     reach BuildSpiteInstructions via (CorpusForPseudolabeling: gigaspeech) * (Model: tp) * (LanguagePair: en_de) * (TopK: *) * (TopKColumn: *)
+}
+
+plan BuildSpiteTPAllGigaspeech {
+    reach BuildSpiteInstructions via (CorpusForPseudolabeling: gigaspeech) * (Model: tp) * (LanguagePair: en_de) * (TopK: 0) * (TopKColumn: random)
 }

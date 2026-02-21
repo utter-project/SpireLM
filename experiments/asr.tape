@@ -115,14 +115,24 @@ plan LabelizeBF16 {
     reach LabelAudio via (ASRDataset: *) * (HubertDtype: bf16)
 }
 
+##### Explicit Experiments #####
+
+plan DecodeExplicit {
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_explicit) * (HubertDtype: bf16) * (Template: explicit)
+}
+
+plan ComputeWERExplicit {
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_explicit) * (HubertDtype: bf16) * (Template: explicit)
+}
+
 ##### vctk30 Experiments #####
 
 plan DecodeVCTK30 {
-    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_vctk30h_400 lmt_4B_vctk30h_3600) * (KMModel: vctk_mic1_30h) * (HubertDtype: bf16)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_vctk30h_400 lmt_4B_vctk30h_3600 lmt_4B_vctk30h) * (KMModel: vctk_mic1_30h) * (HubertDtype: bf16)
 }
 
 plan ComputeWERVCTK30 {
-    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_vctk30h_400 lmt_4B_vctk30h_3600) * (KMModel: vctk_mic1_30h) * (HubertDtype: bf16)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_vctk30h_400 lmt_4B_vctk30h_3600 lmt_4B_vctk30h) * (KMModel: vctk_mic1_30h) * (HubertDtype: bf16)
 }
 
 ##### giga30 Experiments #####
@@ -168,7 +178,7 @@ plan ComputeWERCV20 {
 ##### Hypothesis Generation #####
 
 plan DecodeAll {
-    reach Decode via (ASRDataset: *) * (Speech2TextModel: *)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: *) * (HubertDtype: bf16)
 }
 
 plan DecodeSpireFull {
@@ -186,7 +196,7 @@ plan DecodeTowerSpire {
 ##### Evaluation #####
 
 plan ComputeWERAll {
-    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: *)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: *) * (HubertDtype: bf16)
 }
 
 plan ComputeWERSpireFull {

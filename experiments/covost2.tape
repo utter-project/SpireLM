@@ -247,6 +247,27 @@ plan Convert {
     reach ConvertAudio via (LanguagePair: en_de en_zh)
 }
 
+##### Explicit Experiments #####
+
+plan DirectTranslationExplicit {
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_explicit) * (HubertDtype: bf16) *  (LanguagePair: en_de en_zh) * (Template: explicit)
+}
+
+plan EvaluationExplicit {
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_explicit) * (HubertDtype: bf16) * (LanguagePair: en_de en_zh) * (Template: explicit)
+}
+
+
+##### VCTK30 Experiments #####
+
+plan DirectTranslationVCTK30 {
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_vctk30h) * (HubertDtype: bf16) * (KMModel: vctk_mic1_30h) * (LanguagePair: en_de en_zh)
+}
+
+plan EvaluationVCTK30 {
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_vctk30h) * (HubertDtype: bf16) * (KMModel: vctk_mic1_30h) * (LanguagePair: en_de en_zh)
+}
+
 ##### Giga30 Experiments #####
 
 plan DirectTranslationGiga30 {

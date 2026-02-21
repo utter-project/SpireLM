@@ -164,6 +164,26 @@ task Transcribe
         --max-length $max_tokens
 }
 
+##### Explicit Experiments #####
+
+plan DirectTranslationExplicit {
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_explicit) * (HubertDtype: bf16) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (Template: explicit)
+}
+
+plan EvaluationExplicit {
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_explicit) * (HubertDtype: bf16) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (Template: explicit)
+}
+
+##### VCTK30 Experiments #####
+
+plan DirectTranslationVCTK30 {
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_vctk30h) * (HubertDtype: bf16) * (KMModel: vctk_mic1_30h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+}
+
+plan EvaluationVCTK30 {
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_vctk30h) * (HubertDtype: bf16) * (KMModel: vctk_mic1_30h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+}
+
 ##### Giga20 Experiments #####
 
 plan DirectTranslationGiga20 {
@@ -202,6 +222,14 @@ plan DirectTranslation {
     reach DecodeDirect via (Speech2TextModel: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
 }
 
+plan DirectTranslationAll {
+    reach DecodeDirect via (Speech2TextModel: *) * (LanguagePair: *)
+}
+
 plan Evaluation {
     reach CometDirect, BleuDirect via (Speech2TextModel: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+}
+
+plan EvaluationAll {
+    reach CometDirect, BleuDirect via (Speech2TextModel: *) * (LanguagePair: *)
 }
