@@ -28,6 +28,11 @@ def compute_gigaspeech_time(example):
     return example
 
 
+def compute_mls_eng_time(example):
+    example["seconds"] = example["audio_duration"]
+    return example
+
+
 def main(args):
 
     remove_audio = True
@@ -35,6 +40,8 @@ def main(args):
         compute_time_func = compute_spgi_time
     elif "gigaspeech" in args.path:
         compute_time_func = compute_gigaspeech_time
+    elif "mls_eng" in args.path:
+        compute_time_func = compute_mls_eng_time
     else:
         compute_time_func = compute_time_from_array
         remove_audio = False

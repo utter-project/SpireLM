@@ -213,6 +213,30 @@ plan LabelQuick {
     reach LabelCorpusImproved via (ShardNumber: *) * (HubertDtype: bf16) * (BatchSeconds: 240)
 }
 
+plan DD_1_20 {
+    reach DeduplicateImproved via (ShardNumber: 1..20) * (HubertDtype: bf16) * (BatchSeconds: 240)
+}
+
+plan DD_21_40 {
+    reach DeduplicateImproved via (ShardNumber: 21..40) * (HubertDtype: bf16) * (BatchSeconds: 240)
+}
+
+plan DD_41_60 {
+    reach DeduplicateImproved via (ShardNumber: 41..60) * (HubertDtype: bf16) * (BatchSeconds: 240)
+}
+
+plan DD_61_80 {
+    reach DeduplicateImproved via (ShardNumber: 61..80) * (HubertDtype: bf16) * (BatchSeconds: 240)
+}
+
+plan DD_81_100 {
+    reach DeduplicateImproved via (ShardNumber: 81..100) * (HubertDtype: bf16) * (BatchSeconds: 240)
+}
+
+plan DD_101_109 {
+    reach DeduplicateImproved via (ShardNumber: 101..109) * (HubertDtype: bf16) * (BatchSeconds: 240)
+}
+
 ##### vctk_mic1_30h
 
 plan DD_VCTK_Mic1_30h {
