@@ -24,7 +24,7 @@ def _lengths_to_mask(lengths, max_length, dtype, device):
 
 class Featurizer(nn.Module):
 
-    def __init__(self, ckpt_path, layer=22, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
+    def __init__(self, ckpt_path, layer=22, lm_projection=None, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
         super().__init__()
 
         self.model = AutoModel.from_pretrained(ckpt_path, torch_dtype=dtype)
@@ -48,6 +48,16 @@ class Featurizer(nn.Module):
                 self.pooling = nn.MaxPool1d(pooling_width, ceil_mode=False)
         else:
             self.pooling = None
+
+        if lm_projection is not None:
+            self.lm_projection = torch.load(lm_projection, weights_only=False).to(dtype=dtype)
+        else:
+            self.lm_projection = None
+
+    @property
+    def feature_dim(self):
+        assert self.lm_projection is None
+        return self.model.encoder.layers[-1].feed_forward.output_dense.out_features
 
     def _get_feature_vector_attention_mask(self, length, attention_mask):
         return self.model._get_feature_vector_attention_mask(length, attention_mask)
@@ -87,6 +97,9 @@ class Featurizer(nn.Module):
                 output_mask.dtype,
                 output_mask.device
             )
+
+        if self.lm_projection is not None:
+            feats = self.lm_projection(feats)
 
         if not flatten:
             return feats, output_mask
@@ -139,7 +152,7 @@ class KMeans(nn.Module):
 
 class Labeler(nn.Module):
 
-    def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
+    def __init__(self, ckpt_path, km_path, layer=22, lm_projection=None, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
         """
         The layer default of 22 is a strong value for HuBERT-large. It may be
         inappropriate for other models.
@@ -149,6 +162,7 @@ class Labeler(nn.Module):
         self.featurizer = Featurizer(
             ckpt_path,
             layer=layer,
+            lm_projection=lm_projection,
             dtype=dtype,
             pooling_width=pooling_width,
             pooling_type=pooling_type

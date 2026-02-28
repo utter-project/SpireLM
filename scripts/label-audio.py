@@ -26,7 +26,8 @@ def main(args):
         layer=args.layer,
         dtype=dtype,
         pooling_width=args.pooling_width,
-        pooling_type=args.pooling_type
+        pooling_type=args.pooling_type,
+        lm_projection=args.lm_projection
     )
     feature_extractor = AutoFeatureExtractor.from_pretrained(args.ckpt_path)
 
@@ -117,6 +118,10 @@ if __name__ == "__main__":
     parser.add_argument("--pooling-type", choices=["mean", "max"], default="mean")
     parser.add_argument("--token-batching", action="store_true")
     parser.add_argument("--example-lengths", default=None)
+    parser.add_argument("--lm-projection", default=None,
+                        help="""Arbitrary pytorch model to map SSL features to
+                        something else (intended: projection to LM embedding
+                        space).""")
     args = parser.parse_args()
 
     main(args)

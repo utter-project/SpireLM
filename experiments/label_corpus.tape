@@ -97,12 +97,16 @@ task LabelCorpusImproved
     :: batch_seconds=@
     :: pooling_width=@
     :: pooling_type=@
+    :: lm_projection=@
     :: repo=@
 {
     start_ix=$(( ($shard_number - 1) * $shard_size))
     extra_args=""
     if [[ $path_extra != "" ]] ; then
         extra_args="--path-extra ${path_extra}"
+    fi
+    if [[ $lm_projection != "" ]] ; then
+        extra_args="--lm-projection ${lm_projection}"
     fi
     python $repo/scripts/label-audio.py \
         --tsv_path $dataset_path \
