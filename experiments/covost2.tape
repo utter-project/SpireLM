@@ -250,11 +250,11 @@ plan Convert {
 ##### Minblaser Experiments #####
 
 plan DirectTranslationMinblaser {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600) * (HubertDtype: bf16) * (LanguagePair: en_de en_zh)
+    reach DecodeDirect via (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600 lmt_4B_minblaser_4_5) * (HubertDtype: bf16) * (LanguagePair: en_de en_zh)
 }
 
 plan EvaluationMinblaser {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600) * (HubertDtype: bf16) * (LanguagePair: en_de en_zh)
+    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600 lmt_4B_minblaser_4_5) * (HubertDtype: bf16) * (LanguagePair: en_de en_zh)
 }
 
 ##### Explicit Experiments #####

@@ -118,11 +118,11 @@ plan LabelizeBF16 {
 ##### Minblaser Experiments #####
 
 plan DecodeMinblaser {
-    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600) * (HubertDtype: bf16)
+    reach Decode via (ASRDataset: *) * (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600 lmt_4B_minblaser_4_5) * (HubertDtype: bf16)
 }
 
 plan ComputeWERMinblaser {
-    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600) * (HubertDtype: bf16)
+    reach ComputeWER via (ASRDataset: *) * (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600 lmt_4B_minblaser_4_5) * (HubertDtype: bf16)
 }
 
 ##### Explicit Experiments #####
