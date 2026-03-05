@@ -21,6 +21,7 @@ from npy_append_array import NpyAppendArray
 from sonar.inference_pipelines.speech import SpeechToEmbeddingModelPipeline
 
 from spire.data import build_dataloader
+from spire.cli import dataset_parser
 
 
 def collate_audio(inputs, sampling_rate=16000):
@@ -114,23 +115,9 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(parents=[dataset_parser])
     parser.add_argument("--sonar-speech-encoder", default="sonar_speech_encoder_eng")
-    parser.add_argument("--data-path", default="google/fleurs")
-    parser.add_argument("--batch-size", type=int, default=1)
-    parser.add_argument("--num-workers", type=int, default=1)
-    parser.add_argument("--resample-to", type=int, default=16000)
-    parser.add_argument("--dataset-type", default="tsv", choices=["tsv", "hf-disk", "hf-cache"])
-    parser.add_argument("--path-extra", default="",
-                        help="'xl' for Gigaspeech, for example")
-    parser.add_argument("--hf-split", default="train")
-    parser.add_argument("--start-ix", type=int, default=0,
-                        help="For slicing an HF dataset (start index in the corpus)")
-    parser.add_argument("--n-examples", type=int, default=0,
-                        help="Number of examples to take, starting with start-ix")
     parser.add_argument("--cpu", action="store_true", help="only useful for debugging")
-    parser.add_argument("--token-batching", action="store_true")
-    parser.add_argument("--example-lengths", default=None)
     parser.add_argument("--save-vectors", default="sonar.npy")
     args = parser.parse_args()
     main(args)
