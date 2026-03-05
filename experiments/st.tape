@@ -49,19 +49,16 @@ task LabelAudio
     :: dataset_type=@
     :: repo=@
 {
-    # dataset_path should be defined in the uservars file
-    # dataset_dype should be hf-disk
-    # resample-to should not be necessary
-    # batch-size should be 4 (since it isn't token-batching anymore)
+
     python $repo/scripts/label-audio.py \
-        --tsv_path $st_dataset \
+        --data-path $st_dataset \
         --dataset-type $dataset_type \
         --path-extra $path_extra \
         --hf-split test \
-        --out_path $dsus \
-        --ckpt_path $hubert_model \
+        --out-path $dsus \
+        --ssl-model $hubert_model \
         --layer $hubert_layer \
-        --km_path $km_model \
+        --kmeans-model $km_model \
         --batch-size 4 \
         --dtype $hubert_dtype
 }

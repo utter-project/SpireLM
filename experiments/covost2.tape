@@ -44,11 +44,11 @@ task LabelAudio
 {
     #
     python $repo/scripts/label-audio.py \
-        --tsv_path $wav_tsv \
-        --out_path $dsus \
-        --ckpt_path $hubert_model \
+        --data-path $wav_tsv \
+        --out-path $dsus \
+        --ssl-model $hubert_model \
         --layer $hubert_layer \
-        --km_path $km_model \
+        --kmeans-model $km_model \
         --batch-size 1000000 \
         --dtype $hubert_dtype \
         --token-batching

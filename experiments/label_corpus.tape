@@ -15,22 +15,20 @@ task LabelCorpus
 {
     start_ix=$(( ($shard_number - 1) * $shard_size))
     python $repo/scripts/label-audio.py \
-        --tsv_path $dataset_path \
+        --data-path $dataset_path \
         --dataset-type $dataset_type \
         --out_path $dsus \
         --batch-size $ssl_batch_size \
         --num-workers 0 \
-        --ckpt_path $hubert_model \
+        --ssl-model $hubert_model \
         --layer $hubert_layer \
-        --km_path $km_model \
+        --kmeans-model $km_model \
         --dtype $hubert_dtype \
         --start-ix $start_ix \
         --n-examples $shard_size \
-        --validate-examples \
         --hf-split $hf_split \
         --resample-to 16000 \
         --path-extra $path_extra \
-        --dataset-type $dataset_type \
         --no-dedup
 }
 
@@ -58,21 +56,19 @@ task LabelCorpusPooled
         extra_args="--path-extra ${path_extra}"
     fi
     python $repo/scripts/label-audio.py \
-        --tsv_path $dataset_path \
+        --data-path $dataset_path \
         --dataset-type $dataset_type \
-        --out_path $dsus \
+        --out-path $dsus \
         --batch-size $batch_seconds \
         --num-workers 0 \
-        --ckpt_path $hubert_model \
+        --ssl-model $hubert_model \
         --layer $hubert_layer \
-        --km_path $km_model \
+        --kmeans-model $km_model \
         --dtype $hubert_dtype \
         --start-ix $start_ix \
         --n-examples $shard_size \
-        --validate-examples \
         --hf-split $hf_split \
         --resample-to 16000 \
-        --dataset-type $dataset_type \
         --no-dedup \
         --pooling-width $pooling_width \
         --pooling-type $pooling_type \
@@ -105,14 +101,14 @@ task LabelCorpusImproved
         extra_args="--path-extra ${path_extra}"
     fi
     python $repo/scripts/label-audio.py \
-        --tsv_path $dataset_path \
+        --data-path $dataset_path \
         --dataset-type $dataset_type \
-        --out_path $dsus \
+        --out-path $dsus \
         --batch-size $batch_seconds \
         --num-workers 0 \
-        --ckpt_path $hubert_model \
+        --ssl-model $hubert_model \
         --layer $hubert_layer \
-        --km_path $km_model \
+        --kmeans-model $km_model \
         --dtype $hubert_dtype \
         --start-ix $start_ix \
         --n-examples $shard_size \
@@ -145,22 +141,20 @@ task LabelCorpusPooledVanilla
 {
     start_ix=$(( ($shard_number - 1) * $shard_size))
     python $repo/scripts/label-audio.py \
-        --tsv_path $dataset_path \
+        --data-path $dataset_path \
         --dataset-type $dataset_type \
-        --out_path $dsus \
+        --out-path $dsus \
         --batch-size $ssl_batch_size \
         --num-workers 0 \
-        --ckpt_path $hubert_model \
+        --ssl-model $hubert_model \
         --layer $hubert_layer \
-        --km_path $km_model \
+        --kmeans-model $km_model \
         --dtype $hubert_dtype \
         --start-ix $start_ix \
         --n-examples $shard_size \
-        --validate-examples \
         --hf-split $hf_split \
         --resample-to 16000 \
         --path-extra $path_extra \
-        --dataset-type $dataset_type \
         --no-dedup \
         --pooling-width $pooling_width \
         --pooling-type $pooling_type
