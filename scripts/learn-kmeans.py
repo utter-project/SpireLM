@@ -17,8 +17,6 @@ def train_in_memory(kmeans, args):
 
 def train_minibatch(kmeans, args):
 
-    valid_set = load_features(feat_dir=args.validation_dir)
-
     # lazy feature loading
     feature_batches = batched_features(
         args.batch_size,
@@ -29,8 +27,6 @@ def train_minibatch(kmeans, args):
 
     frames_seen = 0
     old_centers = None
-    prev_inertia = None
-    patience_counter = 0
 
     pbar_max = args.max_frames / 180000  # frames per hour
     with tqdm(total=pbar_max) as pbar:
@@ -50,26 +46,6 @@ def train_minibatch(kmeans, args):
                         stop_training = True
                 old_centers = kmeans.cluster_centers_.copy()
 
-                '''
-                valid_inertia = compute_inertia(kmeans.cluster_centers_, valid_set)
-                print(f"Validation inertia at step {i}: {valid_inertia:.3f}")
-
-                if prev_inertia is not None:
-                    rel_improve = (prev_inertia - valid_inertia) / prev_inertia
-                    print(f"Relative inertia improvement: {rel_improve:.6f}")
-
-                    if rel_improve < args.inertia_tol:
-                        patience_counter += 1
-                        print(f"Patience counter: {patience_counter}")
-                    else:
-                        patience_counter = 0
-                prev_inertia = valid_inertia
-
-                if patience_counter >= args.inertia_patience:
-                    print(f"Stopping: validation inertia plateaued for {args.inertia_patience} checks")
-                    stop_training = True
-                '''
-
                 sys.stdout.flush()
                 if stop_training:
                     break
@@ -79,32 +55,6 @@ def train_minibatch(kmeans, args):
                 break
 
     return kmeans
-
-
-def compute_inertia(centers, X_val, batch_size=100):
-    # centers: (k, d)
-    # X_val: (n_val, d)
-    # batch_size: number of samples to process in each batch
-    # returns sum of squared distances
-
-    n_val = len(X_val)
-    k = len(centers)
-    inertia = 0
-
-    # Iterate through the data in batches
-    for start_idx in tqdm(range(0, n_val, batch_size)):
-        # End index for the current batch
-        end_idx = min(start_idx + batch_size, n_val)
-        X_batch = X_val[start_idx:end_idx]  # (batch_size, d)
-
-        # Compute squared distances from each point in the batch to each center
-        dist_sq = np.sum((X_batch[:, None, :] - centers[None, :, :]) ** 2, axis=2)  # (batch_size, k)
-
-        # For each point, find the minimum squared distance and add to inertia
-        closest = np.min(dist_sq, axis=1)  # (batch_size,)
-        inertia += np.sum(closest)
-
-    return inertia
 
 
 def main(args):
