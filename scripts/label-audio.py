@@ -7,6 +7,7 @@ from transformers import AutoFeatureExtractor
 from spire.utils import detokenize
 from spire.labeler import Labeler
 from spire.data import build_dataloader
+from spire.cli import ssl_parser, dataset_parser, dsu_parser
 
 
 def pred2str_single(pred):
@@ -21,14 +22,14 @@ def main(args):
     dtype = dtypes[args.dtype]
 
     labeler = Labeler(
-        args.ckpt_path,
-        args.km_path,
+        args.ssl_model,
+        args.kmeans_model,
         layer=args.layer,
         dtype=dtype,
         pooling_width=args.pooling_width,
         pooling_type=args.pooling_type
     )
-    feature_extractor = AutoFeatureExtractor.from_pretrained(args.ckpt_path)
+    feature_extractor = AutoFeatureExtractor.from_pretrained(args.ssl_model)
 
     device = "cpu" if args.cpu else "cuda"
     labeler = labeler.to(device=device)
@@ -37,14 +38,13 @@ def main(args):
         labeler = torch.compile(labeler)
 
     loader, n_batches, raw_length = build_dataloader(
-        path=args.tsv_path,
+        path=args.data_path,
         feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         dataset_type=args.dataset_type,
         start_ix=args.start_ix,
         n_examples=args.n_examples,
-        validate_examples=args.validate_examples,
         path_extra=args.path_extra,
         hf_split=args.hf_split,
         resample_to=args.resample_to,
@@ -85,38 +85,12 @@ def main(args):
                 continue
             label, length = idx2labels[i]
             label_string = pred2str_single(label) if length > 0 else ""
-            # label_string = pred2str_single(idx2labels[i])
             f.write(label_string + "\n")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--tsv_path")  # replace this
-    parser.add_argument("--out_path", required=True)
-    parser.add_argument("--ckpt_path", default="facebook/hubert-large-ll60k")
-    parser.add_argument("--km_path", default="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000")
-    parser.add_argument("--layer", type=int, default=22)
-    parser.add_argument("--as-indices", action="store_true")
-    parser.add_argument("--no-dedup", action="store_true")
-    parser.add_argument("--batch-size", type=int, default=1, help="Number of seconds if token_batching==True, otherwise number of sentences")
-    parser.add_argument("--num-workers", type=int, default=1)
-    parser.add_argument("--dtype", default="fp32", choices=["fp32", "bf16"])
-    parser.add_argument("--compile", action="store_true")
-    parser.add_argument("--resample-to", type=int, default=16000)
-    parser.add_argument("--dataset-type", default="tsv", choices=["tsv", "hf-disk", "hf-cache"])
-    parser.add_argument("--path-extra", default="",
-                        help="'xl' for Gigaspeech, for example")
-    parser.add_argument("--hf-split", default="test")
-    parser.add_argument("--start-ix", type=int, default=0,
-                        help="For slicing an HF dataset (start index in the corpus)")
-    parser.add_argument("--n-examples", type=int, default=0,
-                        help="Number of examples to take, starting with start-ix")
-    parser.add_argument("--validate-examples", action="store_true")
-    parser.add_argument("--cpu", action="store_true", help="only useful for debugging")
-    parser.add_argument("--pooling-width", type=int, default=1, help="1 recovers no pooling")
-    parser.add_argument("--pooling-type", choices=["mean", "max"], default="mean")
-    parser.add_argument("--token-batching", action="store_true")
-    parser.add_argument("--example-lengths", default=None)
+    parser = argparse.ArgumentParser(parents=[ssl_parser, dataset_parser, dsu_parser])
+    parser.add_argument("--out-path", required=True)
     args = parser.parse_args()
 
     main(args)

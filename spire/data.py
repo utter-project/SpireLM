@@ -236,8 +236,8 @@ def load_hf_audio_dataset(
 
 def build_dataloader(
         path, feature_extractor, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
-        n_examples=0, validate_examples=False, path_extra="en", hf_location="disk",
-        hf_split="test", resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
+        n_examples=0, path_extra="en", hf_location="disk", hf_split="test",
+        resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
         token_batching=False, example_lengths=None, collator=None, placeholder_len=0,
         filter_mic=None):
 
