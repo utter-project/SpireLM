@@ -2,6 +2,7 @@ from os.path import join
 from glob import glob
 import unicodedata
 import json
+import random
 
 import numpy as np
 
@@ -61,11 +62,30 @@ def load_features(feat_files=None, feat_dir=None, n_files=0):
     assert feat_dir is None or feat_files is None
 
     if feat_dir is not None:
-        feat_files = glob(join(feat_dir, "*.npy"))
+        feat_files = []
+        for fd in feat_dir:
+            feat_files.extend(glob(join(fd, "*.npy")))
         if n_files > 0:
             feat_files = sorted(feat_files)[:n_files]
 
     return np.vstack([np.load(p) for p in feat_files])
+
+
+def batched_features(batch_size, feat_files=None, feat_dir=None, seed=42):
+    random.seed(a=seed)
+    assert feat_dir is not None or feat_files is not None
+    assert feat_dir is None or feat_files is None
+
+    if feat_dir is not None:
+        feat_files = []
+        for fd in feat_dir:
+            feat_files.extend(glob(join(fd, "*.npy")))
+    random.shuffle(feat_files)
+    for feat_file in feat_files:
+        feats = np.load(feat_file)
+        for i in range(0, feats.shape[0], batch_size):
+            batch = feats[i: i + batch_size]
+            yield batch
 
 
 def load_template(template_path, key):
