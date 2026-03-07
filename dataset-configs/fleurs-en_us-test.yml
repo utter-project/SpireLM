@@ -1,0 +1,4 @@
+path: google/fleurs
+config: en_us
+dataset_type: hf_cache
+split: test
