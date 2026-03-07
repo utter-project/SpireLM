@@ -71,7 +71,6 @@ def main(args):
         dataset_type=args.dataset_type,
         start_ix=args.start_ix,
         n_examples=args.n_examples,
-        validate_examples=False,
         path_extra=args.path_extra,
         hf_split=args.hf_split,
         resample_to=args.resample_to,
