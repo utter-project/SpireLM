@@ -39,7 +39,7 @@ def main(args):
         labeler = torch.compile(labeler)
 
     loader, n_batches, raw_length = build_dataloader(
-        config=args.config[0],
+        config=args.config,
         feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,

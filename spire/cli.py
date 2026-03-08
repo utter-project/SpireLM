@@ -28,6 +28,8 @@ CLI arguments for loading datasets (currently not included: --max-hours and
 """
 dataset_parser = argparse.ArgumentParser(add_help=False)
 dataset_parser.add_argument("--config", nargs="+")
+dataset_parser.add_argument("--dataset-weights", nargs="*", type=float,
+                            help="weights for dataset sampling")
 dataset_parser.add_argument("--resample-to", type=int, default=16000)
 dataset_parser.add_argument("--start-ix", type=int, default=0,
                             help="For slicing an HF dataset (start index in the corpus)")

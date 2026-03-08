@@ -4,6 +4,7 @@ import yaml
 
 import soundfile as sf
 import numpy as np
+import torch
 from torch.utils.data import Dataset, Sampler, SequentialSampler, RandomSampler, BatchSampler, DataLoader
 from datasets import load_from_disk, load_dataset, Audio
 
@@ -299,21 +300,59 @@ def load_audio_dataset(
     return dataset, is_tsv
 
 
-def build_dataloader(
+class AdaptiveWeightedMultiDataLoader:
+    def __init__(self, loaders, target_weights=None, alpha=0.02):
+        self.loaders = loaders
+        if target_weights is not None:
+            self.target_weights = torch.tensor(target_weights, dtype=torch.float)
+        else:
+            # if unspecified, use uniform weights
+            self.target_weights = torch.ones(len(loaders))
+        self.target_weights /= self.target_weights.sum()
+
+        self.alpha = alpha
+
+        # initialize duration estimates
+        self.avg_lengths = torch.ones(len(loaders))
+
+    def _sampling_probs(self):
+        probs = self.target_weights / self.avg_lengths
+        return probs / probs.sum()
+
+    def __iter__(self):
+        iters = [iter(l) for l in self.loaders]
+
+        while True:
+            probs = self._sampling_probs()
+            idx = torch.multinomial(probs, 1).item()
+
+            try:
+                batch = next(iters[idx])
+            except StopIteration:
+                iters[idx] = iter(self.loaders[idx])
+                batch = next(iters[idx])
+
+            # assume batch contains audio tensors
+            # compute batch average duration
+            lengths = batch["seconds"]
+            # batch_avg = lengths.float().mean()
+            batch_avg = sum(lengths) / len(lengths)
+
+            # EMA update
+            self.avg_lengths[idx] = (
+                (1 - self.alpha) * self.avg_lengths[idx]
+                + self.alpha * batch_avg
+            )
+
+            yield batch
+
+
+def _build_single_dataloader(
         config,
         feature_extractor, num_workers=0, batch_size=1, start_ix=0,
         n_examples=0,
         resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
         token_batching=False, example_lengths=None, collator=None, placeholder_len=0):
-
-    # config is what, exactly? A path? or a list of paths? Should probably be
-    # a path or a singleton list (current code assumes it's a string...)
-
-    # example_lengths is used to sort examples so that padding can be minimized.
-    # This is useful for token batching. If passed, it should be a numpy array
-    # whose length is the same as that of the corpus (not the number of examples
-    # loaded; the WHOLE corpus). (future TODO: let it be the same length as
-    # n_examples.)
 
     # Build dataset
     dataset, is_tsv = load_audio_dataset(
@@ -368,3 +407,45 @@ def build_dataloader(
         n_batches = len(loader)
 
     return loader, n_batches, length_before_validating
+
+
+def build_dataloader(
+        config,
+        feature_extractor,
+        dataset_weights=None, num_workers=0, batch_size=1, start_ix=0, n_examples=0,
+        resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
+        token_batching=False, example_lengths=None, collator=None, placeholder_len=0):
+
+    if isinstance(config, str):
+        config = [config]
+
+    loaders = []
+    n_batches = []
+    pre_valid_length = []
+
+    for cf in config:
+        single_loader, single_n_batches, single_length_before_batching = _build_single_dataloader(
+            config=cf,
+            feature_extractor=feature_extractor,
+            num_workers=num_workers,
+            batch_size=batch_size,
+            start_ix=start_ix,
+            n_examples=n_examples,
+            resample_to=resample_to,
+            shuffle=shuffle,
+            torch_random=torch_random,
+            pin_memory=False,
+            token_batching=token_batching,
+            example_lengths=example_lengths,
+            collator=collator,
+            placeholder_len=placeholder_len
+        )
+        loaders.append(single_loader)
+        n_batches.append(single_n_batches)
+        pre_valid_length.append(single_length_before_batching)
+
+    if len(config) == 1:
+        return loaders[0], n_batches[0], pre_valid_length[0]
+
+    weighted_loader = AdaptiveWeightedMultiDataLoader(loaders, dataset_weights)
+    return weighted_loader, sum(n_batches), sum(pre_valid_length)

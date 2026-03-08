@@ -28,6 +28,8 @@ from spire.cli import ssl_parser, dataset_parser, randomness_parser
 
 
 def main(args):
+    if len(args.config) > 1:
+        assert args.dataset_weights is None or len(args.config) == len(args.dataset_weights)
 
     kmeans = MiniBatchKMeans(
         n_clusters=args.n_clusters,
@@ -68,7 +70,8 @@ def main(args):
         featurizer = torch.compile(featurizer)
 
     loader, _, _ = build_dataloader(
-        config=args.config[0],
+        config=args.config,
+        dataset_weights=args.dataset_weights,
         feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
@@ -101,10 +104,6 @@ def main(args):
                 # but with some layers cut off (is there a more elegant way to
                 # do this inside HF?)
 
-                # the other thing to think about is how we handle the batching.
-
-                # how large do we expect the features tensors to be?
-                # if we could batch based on length, that would be a
                 features = featurizer(
                     batch=inp,
                     attention_mask=mask,
