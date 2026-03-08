@@ -1,5 +1,6 @@
-from os.path import join, basename, splitext
+from os.path import join, basename, splitext, exists
 from functools import partial
+import yaml
 
 import soundfile as sf
 import numpy as np
@@ -234,12 +235,79 @@ def load_hf_audio_dataset(
     return dataset
 
 
+def _load_dataset_from_config(config):
+    with open(config) as f:
+        dataset_config = yaml.safe_load(f)
+    path = dataset_config["path"]  # only required field
+    config = dataset_config.get("config", None)
+    split = dataset_config.get("split", None)
+    filter_mic = dataset_config.get("filter_mic", None)  # only for VCTK
+
+    # config-based smart dataset load
+    if exists(path) and exists(join(path, "dataset_info.json")):
+        # hf-disk case
+        dataset = load_from_disk(path)[split]
+    elif exists(path) and path.endswith(".tsv"):
+        return AudioTSVDataset(tsv_path=path), True
+    else:
+        # hf-cache case
+        if config:
+            dataset = load_dataset(path, config, split=split)
+        else:
+            dataset = load_dataset(path, split=split)
+
+    if filter_mic is not None:
+        audio_paths = dataset.remove_columns("audio")["file"]
+        mic = [splitext(basename(audio_path))[0].split("_")[-1] for audio_path in audio_paths]
+        dataset = dataset.add_column(name="mic", column=mic)
+        if filter_mic is not None:
+            dataset = dataset.filter(lambda ex: ex["mic"] == filter_mic)
+
+    return dataset, False
+
+
+def _postprocess_dataset(
+        dataset, resample_to=None, start_ix=0, n_examples=0, remove_audio=False, add_index=False):
+
+    if remove_audio:
+        dataset = dataset.remove_columns("audio")
+    elif resample_to is not None:
+        dataset = dataset.cast_column("audio", Audio(sampling_rate=resample_to))
+
+    dataset = dataset.skip(start_ix)
+    if n_examples > 0:
+        examples_to_take = min(len(dataset), n_examples)
+        dataset = dataset.take(examples_to_take)
+
+    if add_index:
+        dataset = dataset.add_column(name="idx", column=list(range(len(dataset))))
+    return dataset
+
+
+def load_audio_dataset(
+        config, resample_to=None, start_ix=0, n_examples=0, remove_audio=False,
+        add_index=False):
+
+    dataset, is_tsv = _load_dataset_from_config(config)
+    dataset = _postprocess_dataset(
+        dataset,
+        resample_to=resample_to,
+        start_ix=start_ix,
+        n_examples=n_examples,
+        remove_audio=remove_audio,
+        add_index=add_index)
+    return dataset, is_tsv
+
+
 def build_dataloader(
-        path, feature_extractor, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
-        n_examples=0, path_extra="en", hf_location="disk", hf_split="test",
+        config,
+        feature_extractor, num_workers=0, batch_size=1, start_ix=0,
+        n_examples=0,
         resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
-        token_batching=False, example_lengths=None, collator=None, placeholder_len=0,
-        filter_mic=None):
+        token_batching=False, example_lengths=None, collator=None, placeholder_len=0):
+
+    # config is what, exactly? A path? or a list of paths? Should probably be
+    # a path or a singleton list (current code assumes it's a string...)
 
     # example_lengths is used to sort examples so that padding can be minimized.
     # This is useful for token batching. If passed, it should be a numpy array
@@ -248,20 +316,13 @@ def build_dataloader(
     # n_examples.)
 
     # Build dataset
-    if dataset_type == "tsv":
-        dataset = AudioTSVDataset(tsv_path=path)
-    else:
-        dataset = load_hf_audio_dataset(
-            path,
-            path_extra=path_extra,
-            resample_to=resample_to,
-            split=hf_split,
-            from_disk=hf_location == "disk",
-            add_index=True,
-            start_ix=start_ix,
-            n_examples=n_examples,
-            filter_mic=filter_mic
-        )
+    dataset, is_tsv = load_audio_dataset(
+        config,
+        add_index=True,
+        start_ix=start_ix,
+        n_examples=n_examples,
+        resample_to=resample_to
+    )
 
     if example_lengths is not None:
         lengths = np.load(example_lengths)[start_ix: start_ix + n_examples]
@@ -275,11 +336,11 @@ def build_dataloader(
     # build the collator
     if collator is None:
         # if no custom collator is provided, use one of the ones defined in this file
-        collate_func = collate_fn if dataset_type == "tsv" else collate_hf
+        collate_func = collate_fn if is_tsv else collate_hf
         collator = partial(collate_func, feature_extractor=feature_extractor)
 
     if token_batching:
-        if dataset_type == "tsv":
+        if is_tsv:
             sampler = LengthKeySortedAudioSampler(dataset, length_key="n_samples")
             batch_sampler = NaiveTokenBatchSampler(dataset, sampler, batch_size, length_key="n_samples")
         else:
@@ -289,7 +350,7 @@ def build_dataloader(
         sampler = RandomSampler(dataset, generator=torch_random) if shuffle else SequentialSampler(dataset)
         batch_sampler = BatchSampler(sampler, batch_size=batch_size, drop_last=False)
 
-    if dataset_type != "tsv":
+    if not is_tsv:
         # in theory, this should make it possible to handle missing audio gracefully
         dataset = SafeAudioDataset(dataset, placeholder_len=placeholder_len)
     loader = DataLoader(

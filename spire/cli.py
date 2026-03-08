@@ -27,11 +27,7 @@ CLI arguments for loading datasets (currently not included: --max-hours and
 --hours-per-shard, which are specified in save-features.py
 """
 dataset_parser = argparse.ArgumentParser(add_help=False)
-dataset_parser.add_argument("--data-path", default="google/fleurs")
-dataset_parser.add_argument("--path-extra", default="",
-                            help="'xl' for Gigaspeech, for example")
-dataset_parser.add_argument("--dataset-type", default="tsv", choices=["tsv", "hf-disk", "hf-cache"])
-dataset_parser.add_argument("--hf-split", default="test")
+dataset_parser.add_argument("--config", nargs="+")
 dataset_parser.add_argument("--resample-to", type=int, default=16000)
 dataset_parser.add_argument("--start-ix", type=int, default=0,
                             help="For slicing an HF dataset (start index in the corpus)")
@@ -40,7 +36,6 @@ dataset_parser.add_argument("--n-examples", type=int, default=0,
 dataset_parser.add_argument("--batch-size", type=int, default=1,
                             help="Number of seconds if token_batching==True, otherwise number of sentences")
 dataset_parser.add_argument("--token-batching", action="store_true")
-dataset_parser.add_argument("--filter-mic", default=None)  # kinda annoyed that this one exists
 dataset_parser.add_argument("--num-workers", type=int, default=1)
 dataset_parser.add_argument("--example-lengths", default=None)
 

@@ -18,6 +18,7 @@ def pred2str_single(pred):
 
 
 def main(args):
+    assert len(args.config) == 1
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
 
@@ -38,17 +39,13 @@ def main(args):
         labeler = torch.compile(labeler)
 
     loader, n_batches, raw_length = build_dataloader(
-        path=args.data_path,
+        config=args.config[0],
         feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        dataset_type=args.dataset_type,
         start_ix=args.start_ix,
         n_examples=args.n_examples,
-        path_extra=args.path_extra,
-        hf_split=args.hf_split,
         resample_to=args.resample_to,
-        hf_location="disk" if args.dataset_type == "hf-disk" else "cache",
         token_batching=args.token_batching,
         example_lengths=args.example_lengths
     )

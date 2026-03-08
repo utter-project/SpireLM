@@ -68,21 +68,15 @@ def main(args):
         featurizer = torch.compile(featurizer)
 
     loader, _, _ = build_dataloader(
-        path=args.data_path,
+        config=args.config[0],
         feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        dataset_type=args.dataset_type,
         start_ix=args.start_ix,
         n_examples=args.n_examples,
-        path_extra=args.path_extra,
-        hf_split=args.hf_split,
         resample_to=args.resample_to,
-        hf_location="disk" if args.dataset_type == "hf-disk" else "cache",
-        shuffle=True,
-        torch_random=torch_random,
-        pin_memory=not args.cpu,
-        filter_mic=args.filter_mic
+        token_batching=args.token_batching,
+        example_lengths=args.example_lengths
     )
 
     n_hours = 0.
