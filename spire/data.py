@@ -245,13 +245,11 @@ def _load_dataset_from_config(config):
     filter_mic = dataset_config.get("filter_mic", None)  # only for VCTK
 
     # config-based smart dataset load
-    if exists(path) and exists(join(path, "dataset_info.json")):
-        # hf-disk case
+    if exists(path) and exists(join(path, "dataset_dict.json")):
         dataset = load_from_disk(path)[split]
     elif exists(path) and path.endswith(".tsv"):
         return AudioTSVDataset(tsv_path=path), True
     else:
-        # hf-cache case
         if config:
             dataset = load_dataset(path, config, split=split)
         else:
