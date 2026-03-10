@@ -64,17 +64,14 @@ def main(args):
 
     collator = partial(collate_audio, sampling_rate=args.resample_to)
     loader, n_batches = build_dataloader(
-        path=args.data_path,
+        config=args.config,
+        dataset_weights=args.dataset_weights,
         feature_extractor=None,
         batch_size=args.batch_size,  # this should be a number of seconds
         num_workers=args.num_workers,
-        dataset_type=args.dataset_type,
         start_ix=args.start_ix,
         n_examples=args.n_examples,
-        path_extra=args.path_extra,
-        hf_split=args.hf_split,
         resample_to=args.resample_to,
-        hf_location="disk" if args.dataset_type == "hf-disk" else "cache",
         pin_memory=not args.cpu,
         collator=collator,
         token_batching=args.token_batching,
