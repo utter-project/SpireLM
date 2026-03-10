@@ -105,6 +105,38 @@ plan Sonar_71_83 {
     reach ComputeSonarSpeechVectors via (ShardNumber: 71..83) * (BatchSeconds: 480)
 }
 
+plan Sonar_71_80 {
+    reach ComputeSonarSpeechVectors via (ShardNumber: 71..80) * (BatchSeconds: 480)
+}
+
+plan Sonar_81_90 {
+    reach ComputeSonarSpeechVectors via (ShardNumber: 81..90) * (BatchSeconds: 480)
+}
+
+plan Sonar_91_100 {
+    reach ComputeSonarSpeechVectors via (ShardNumber: 91..100) * (BatchSeconds: 480)
+}
+
+plan Sonar_92_93 {
+    reach ComputeSonarSpeechVectors via (ShardNumber: 92..93) * (BatchSeconds: 480)
+}
+
+plan Sonar_94_95 {
+    reach ComputeSonarSpeechVectors via (ShardNumber: 94..95) * (BatchSeconds: 480)
+}
+
+plan Sonar_96_97 {
+    reach ComputeSonarSpeechVectors via (ShardNumber: 96..97) * (BatchSeconds: 480)
+}
+
+plan Sonar_99_100 {
+    reach ComputeSonarSpeechVectors via (ShardNumber: 99..100) * (BatchSeconds: 480)
+}
+
+plan Sonar_101_109 {
+    reach ComputeSonarSpeechVectors via (ShardNumber: 101..109) * (BatchSeconds: 480)
+}
+
 plan Blaser2 {
     reach ComputeBlaser2 via (ShardNumber: *) * (SpiteDataset: *) * (BatchSeconds: 480) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
 }
