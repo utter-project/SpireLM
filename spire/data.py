@@ -69,23 +69,11 @@ class SafeAudioDataset(Dataset):
             return ex
 
 
-def collate_fn(inputs, feature_extractor):
-    audios = [sf.read(inp["audio_path"])[0] for inp in inputs]
-    batch = feature_extractor(
-        audios,
-        sampling_rate=feature_extractor.sampling_rate,
-        return_tensors="pt",
-        padding=True,
-        return_attention_mask=True
-    )
-    batch["indices"] = [inp["idx"] for inp in inputs]
-    if "seconds" not in inputs[0]:
-        batch["seconds"] = [audio.shape[0] / feature_extractor.sampling_rate for audio in audios]
-    return batch
-
-
-def collate_hf(inputs, feature_extractor):
-    audios = [inp["audio"]["array"] for inp in inputs]
+def collate_fn(inputs, feature_extractor, hf_dataset=True):
+    if hf_dataset:
+        audios = [inp["audio"]["array"] for inp in inputs]
+    else:
+        audios = [sf.read(inp["audio_path"])[0] for inp in inputs]
     batch = feature_extractor(
         audios,
         sampling_rate=feature_extractor.sampling_rate,
@@ -361,20 +349,21 @@ def _build_single_dataloader(
         resample_to=resample_to
     )
 
+    lengths = None
     if example_lengths is not None:
         lengths = np.load(example_lengths)[start_ix: start_ix + n_examples]
         print("Average length of this shard", lengths.mean())
-    else:
-        lengths = None
 
-    length_before_validating = len(dataset)
-    print("Dataset length: {}".format(length_before_validating))
+    print("Dataset length: {}".format(len(dataset)))
 
     # build the collator
     if collator is None:
-        # if no custom collator is provided, use one of the ones defined in this file
-        collate_func = collate_fn if is_tsv else collate_hf
-        collator = partial(collate_func, feature_extractor=feature_extractor)
+        # if no custom collator is provided, use the one defined in this file
+        collator = partial(
+            collate_fn,
+            feature_extractor=feature_extractor,
+            hf_dataset=not is_tsv
+        )
 
     if token_batching:
         if is_tsv:
@@ -388,7 +377,6 @@ def _build_single_dataloader(
         batch_sampler = BatchSampler(sampler, batch_size=batch_size, drop_last=False)
 
     if not is_tsv:
-        # in theory, this should make it possible to handle missing audio gracefully
         dataset = SafeAudioDataset(dataset, placeholder_len=placeholder_len)
     loader = DataLoader(
         dataset,
@@ -404,7 +392,7 @@ def _build_single_dataloader(
     else:
         n_batches = len(loader)
 
-    return loader, n_batches, length_before_validating
+    return loader, n_batches
 
 
 def build_dataloader(
@@ -414,15 +402,27 @@ def build_dataloader(
         resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
         token_batching=False, example_lengths=None, collator=None, placeholder_len=0):
 
+    """
+    Main function for building a DataLoader object based on one or more yml
+    config files. The config defines properties of the dataset that are not
+    hyperparameter- or model-dependent, such as
+        - the dataset path (could be a Hugging Face hub path or a location on disk)
+        - the config (i.e. "en_us" when calling load_dataset("google/fleurs", "en_us")
+        - the split
+
+    In other words the config is about the Dataset but not the DataLoader. The
+    remain arguments define how the DataLoader is supposed to operate, as well
+    as some filtering options for examples (for example, take 1000 examples starting
+    at index 200000).
+    """
     if isinstance(config, str):
         config = [config]
 
     loaders = []
     n_batches = []
-    pre_valid_length = []
 
     for cf in config:
-        single_loader, single_n_batches, single_length_before_batching = _build_single_dataloader(
+        single_loader, single_n_batches = _build_single_dataloader(
             config=cf,
             feature_extractor=feature_extractor,
             num_workers=num_workers,
@@ -440,10 +440,9 @@ def build_dataloader(
         )
         loaders.append(single_loader)
         n_batches.append(single_n_batches)
-        pre_valid_length.append(single_length_before_batching)
 
     if len(config) == 1:
-        return loaders[0], n_batches[0], pre_valid_length[0]
+        return loaders[0], n_batches[0]
 
     weighted_loader = AdaptiveWeightedMultiDataLoader(loaders, dataset_weights)
-    return weighted_loader, sum(n_batches), sum(pre_valid_length)
+    return weighted_loader, sum(n_batches)

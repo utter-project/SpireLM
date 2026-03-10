@@ -63,7 +63,7 @@ def main(args):
     )
 
     collator = partial(collate_audio, sampling_rate=args.resample_to)
-    loader, n_batches, raw_length = build_dataloader(
+    loader, n_batches = build_dataloader(
         path=args.data_path,
         feature_extractor=None,
         batch_size=args.batch_size,  # this should be a number of seconds
@@ -101,7 +101,7 @@ def main(args):
     out = NpyAppendArray(args.save_vectors)
 
     idx2vec = {i: (vec, length) for i, vec, length in zip(indices, vectors, lengths)}
-    for i in range(raw_length):
+    for i in range(len(loader.dataset)):
         if i not in idx2vec:
             out.append(missing_vector)
             continue

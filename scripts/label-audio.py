@@ -38,7 +38,7 @@ def main(args):
     if args.compile:
         labeler = torch.compile(labeler)
 
-    loader, n_batches, raw_length = build_dataloader(
+    loader, n_batches = build_dataloader(
         config=args.config,
         feature_extractor=feature_extractor,
         batch_size=args.batch_size,
@@ -73,9 +73,8 @@ def main(args):
                 indices.extend(batch.indices)
                 lengths.extend(batch.seconds)
 
-        # idx2labels = dict(zip(indices, labels))
         idx2labels = {i: (label, length) for i, label, length in zip(indices, labels, lengths)}
-        for i in range(raw_length):
+        for i in range(len(loader.dataset)):
             if i not in idx2labels:
                 # this should be extremely rare
                 f.write("\n")

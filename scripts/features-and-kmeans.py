@@ -69,7 +69,7 @@ def main(args):
     if args.compile:
         featurizer = torch.compile(featurizer)
 
-    loader, _, _ = build_dataloader(
+    loader, _ = build_dataloader(
         config=args.config,
         dataset_weights=args.dataset_weights,
         feature_extractor=feature_extractor,

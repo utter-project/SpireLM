@@ -37,7 +37,7 @@ def main(args):
     if args.compile:
         featurizer = torch.compile(featurizer)
 
-    loader, n_batches, raw_length = build_dataloader(
+    loader, n_batches = build_dataloader(
         config=args.config,
         feature_extractor=feature_extractor,
         batch_size=args.batch_size,
