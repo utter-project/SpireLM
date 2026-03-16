@@ -1,16 +1,14 @@
 task DumpSTGoldTranscriptions
     > gold=gold.txt
     > metadata=metadata.json
-    :: st_dataset=@
-    :: st_path_extra=@
-    :: dataset_type=@
-    :: st_split=@
+    :: st_dataset_config=@
     :: st_text_field=@
     :: repo=@
 {
     python $repo/scripts/extract_asr_text.py \
-        --path $st_dataset --path-extra $st_path_extra --split $st_split --text-field $st_text_field \
-        --dataset-type $dataset_type --corpus $gold --metadata $metadata
+        --config $st_dataset_config \
+        --text-field $st_text_field \
+        --corpus $gold --metadata $metadata
 }
 
 task FetchFlores
@@ -44,17 +42,12 @@ task LabelAudio
     :: hubert_layer=@
     :: km_model=@
     :: hubert_dtype=@
-    :: st_dataset=@
-    :: path_extra=@
-    :: dataset_type=@
+    :: st_dataset_config=@
     :: repo=@
 {
 
     python $repo/scripts/label-audio.py \
-        --data-path $st_dataset \
-        --dataset-type $dataset_type \
-        --path-extra $path_extra \
-        --hf-split test \
+        --config $st_dataset_config \
         --out-path $dsus \
         --ssl-model $hubert_model \
         --layer $hubert_layer \
@@ -126,117 +119,18 @@ task BleuDirect
     sacrebleu --metrics bleu chrf --tokenize=flores200 $references < $hyps > $bleu
 }
 
-##### Self-cascaded ST tasks #####
-
-task BuildASRInstructions
-    < test_dsus=$dsus@LabelAudio
-    > instructions=instructions.json
-    :: speech2text_tokenizer=@
-    :: template=@
-    :: repo=@
-{
-    # template, language pair
-    python $repo/scripts/build_instructions.py \
-        --src $test_dsus \
-        --src-names dsu_seq \
-        --templates $template \
-        --template-key asr \
-        --tokenizer $speech2text_tokenizer \
-        --out $instructions
-}
-
-task Transcribe
-    < instructions=@BuildASRInstructions
-    > hyps=hyps.txt
-    :: speech2text_model=@
-    :: speech2text_tokenizer=@
-    :: max_tokens=@
-    :: repo=@
-{
-    python $repo/scripts/inference.py \
-        --inpaths $instructions \
-        --outpaths $hyps \
-        --model $speech2text_model \
-        --tokenizer $speech2text_tokenizer \
-        --max-length $max_tokens
-}
-
-##### Minblaser Experiments #####
-
-plan DirectTranslationMinblaser {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600 lmt_4B_minblaser_4_5) * (HubertDtype: bf16) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-plan EvaluationMinblaser {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600 lmt_4B_minblaser_4_5) * (HubertDtype: bf16) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-##### Explicit Experiments #####
-
-plan DirectTranslationExplicit {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_explicit) * (HubertDtype: bf16) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (Template: explicit)
-}
-
-plan EvaluationExplicit {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_explicit) * (HubertDtype: bf16) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (Template: explicit)
-}
-
-##### VCTK30 Experiments #####
-
-plan DirectTranslationVCTK30 {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_vctk30h) * (HubertDtype: bf16) * (KMModel: vctk_mic1_30h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-plan EvaluationVCTK30 {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_vctk30h) * (HubertDtype: bf16) * (KMModel: vctk_mic1_30h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-##### Giga20 Experiments #####
-
-plan DirectTranslationGiga20 {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_giga20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-plan EvaluationCV20 {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_giga20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-##### CV20 Experiments #####
-
-plan DirectTranslationCV20 {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-plan EvaluationCV20 {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
 ##### Tokenize audio for ST experiments #####
 
 plan Labelize {
-    reach LabelAudio
-}
-
-##### Prep data #####
-
-plan DirectInstructions {
-    reach BuildDirectInstructions via (Speech2TextModel: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+    reach LabelAudio via (HubertDtype: bf16)
 }
 
 ##### Direct ST #####
 
-plan DirectTranslation {
-    reach DecodeDirect via (Speech2TextModel: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
 plan DirectTranslationAll {
-    reach DecodeDirect via (Speech2TextModel: *) * (LanguagePair: *)
-}
-
-plan Evaluation {
-    reach CometDirect, BleuDirect via (Speech2TextModel: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+    reach DecodeDirect via (Speech2TextModel: *) * (LanguagePair: *) * (HubertDtype: bf16) * (Template: *)
 }
 
 plan EvaluationAll {
-    reach CometDirect, BleuDirect via (Speech2TextModel: *) * (LanguagePair: *)
+    reach CometDirect, BleuDirect via (Speech2TextModel: *) * (LanguagePair: *) * (HubertDtype: bf16) * (Template: *)
 }

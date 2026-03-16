@@ -5,9 +5,4 @@ import "dsu_spire.tconf"
 
 global {
 
-    # paths relative to $repo, defined in a uservars file
-    template=(
-        Template:
-            spire_style="instruction-templates/spire-style-template.json"
-    )
 }
