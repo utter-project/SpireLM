@@ -6,7 +6,8 @@ from spire.data import load_audio_dataset
 
 
 def main(args):
-    dataset, _ = load_audio_dataset(args.config, remove_audio=True)
+    assert len(args.config) == 1
+    dataset, _ = load_audio_dataset(args.config[0], remove_audio=True)
 
     text = dataset[args.text_field]
     with open(args.corpus, "w") as corpus_f:

@@ -143,6 +143,7 @@ def main(args):
     speech_turn = load_template(args.templates, args.template_key)
 
     disable_caching()
+    assert len(args.config) == 1
     dataset, _ = load_audio_dataset(args.config, remove_audio=True)
 
     # iterate_over_files allows this to handle multiple shards. It's easier
