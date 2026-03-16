@@ -1,0 +1,3 @@
+path: bpop/spite-gigaspeech-Euro9B
+config: en_ko
+split: train
