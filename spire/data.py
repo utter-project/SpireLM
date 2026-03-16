@@ -256,10 +256,11 @@ def _load_dataset_from_config(config):
 def _postprocess_dataset(
         dataset, resample_to=None, start_ix=0, n_examples=0, remove_audio=False, add_index=False):
 
-    if remove_audio:
-        dataset = dataset.remove_columns("audio")
-    elif resample_to is not None:
-        dataset = dataset.cast_column("audio", Audio(sampling_rate=resample_to))
+    if "audio" in dataset.column_names:
+        if remove_audio:
+            dataset = dataset.remove_columns("audio")
+        elif resample_to is not None:
+            dataset = dataset.cast_column("audio", Audio(sampling_rate=resample_to))
 
     dataset = dataset.skip(start_ix)
     if n_examples > 0:
