@@ -182,48 +182,6 @@ class TokenBatchSampler(BatchSampler):
         raise TypeError("The number of batches in a token-batched epoch is not known in advance")
 
 
-def load_hf_audio_dataset(
-        path, path_extra="", split="train",
-        resample_to=None, from_disk=True,
-        start_ix=0, n_examples=0, remove_audio=False, add_index=False, filter_mic=None):
-
-    if from_disk:
-        if "openslr/librispeech_asr" in path:
-            assert path_extra
-            split = split + "." + path_extra
-        elif path_extra:
-            path = join(path, path_extra)
-        dataset = load_from_disk(path)[split]
-    else:
-        if path_extra:
-            dataset = load_dataset(path, path_extra, split=split)
-        else:
-            dataset = load_dataset(path, split=split)
-
-    if remove_audio:
-        dataset = dataset.remove_columns("audio")
-    elif resample_to is not None:
-        dataset = dataset.cast_column("audio", Audio(sampling_rate=resample_to))
-
-    dataset = dataset.skip(start_ix)
-    if n_examples > 0:
-        examples_to_take = min(len(dataset), n_examples)
-        dataset = dataset.take(examples_to_take)
-
-    if add_index:
-        dataset = dataset.add_column(name="idx", column=list(range(len(dataset))))
-
-    if path == "CSTR-Edinburgh/vctk":
-        # this is hardcoding, but it's a salient fact for a useful dataset.
-        audio_paths = dataset.remove_columns("audio")["file"]
-        mic = [splitext(basename(audio_path))[0].split("_")[-1] for audio_path in audio_paths]
-        dataset = dataset.add_column(name="mic", column=mic)
-        if filter_mic is not None:
-            dataset = dataset.filter(lambda ex: ex["mic"] == filter_mic)
-
-    return dataset
-
-
 def _load_dataset_from_config(config):
     with open(config) as f:
         dataset_config = yaml.safe_load(f)
