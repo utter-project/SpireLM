@@ -21,11 +21,6 @@ class AudioTSVDataset(Dataset):
         else:
             self.data = examples
 
-    def select(self, indices):
-        # return a new dataset containing the relevant indices from self
-        selected = [self.data[i] for i in indices]
-        return AudioTSVDataset(examples=selected)
-
     def __len__(self):
         return len(self.data)
 
@@ -310,10 +305,11 @@ def _build_single_dataloader(
 
     lengths = None
     if example_lengths is not None:
+        # will fail if lengths are provided but start_ix == n_examples == 0?
         lengths = np.load(example_lengths)[start_ix: start_ix + n_examples]
         print("Average length of this shard", lengths.mean())
 
-    print("Dataset length: {}".format(len(dataset)))
+    print(f"Dataset length: {len(dataset)}")
 
     # build the collator
     if collator is None:
@@ -346,10 +342,7 @@ def _build_single_dataloader(
     )
 
     # count number of batches
-    if token_batching:
-        n_batches = len([b for b in batch_sampler])
-    else:
-        n_batches = len(loader)
+    n_batches = len([b for b in batch_sampler]) if token_batching else len(loader)
 
     return loader, n_batches
 
@@ -391,7 +384,7 @@ def build_dataloader(
             resample_to=resample_to,
             shuffle=shuffle,
             torch_random=torch_random,
-            pin_memory=False,
+            pin_memory=pin_memory,
             token_batching=token_batching,
             example_lengths=example_lengths,
             collator=collator,
