@@ -1,0 +1,3 @@
+path: MLCommons/peoples_speech
+config: clean
+split: train

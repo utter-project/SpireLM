@@ -1,0 +1,21 @@
+global {
+    text2text_model=(
+        Text2TextModel:
+            v1=utter-project/SpireFull
+    )
+
+    text2text_tokenizer=(
+        Text2TextModel:
+            v1=utter-project/SpireFull
+    )
+
+    speech2text_model=(
+        Speech2TextModel:
+            v1=utter-project/SpireFull
+    )
+
+    speech2text_tokenizer=(
+        Speech2TextModel:
+            v1=utter-project/SpireFull
+    )
+}

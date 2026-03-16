@@ -1,0 +1,12 @@
+import "dsu_constants.tconf"
+
+global {
+    hubert_model=(
+        KMModel:
+            spire="facebook/hubert-large-ll60k"
+    )
+    hubert_layer=(
+        KMModel:
+            spire=22
+    )
+}
