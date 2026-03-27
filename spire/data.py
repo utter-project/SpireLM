@@ -191,10 +191,12 @@ def _load_dataset_from_config(config):
     elif exists(path) and path.endswith(".tsv"):
         return AudioTSVDataset(tsv_path=path), True
     else:
-        if config:
-            dataset = load_dataset(path, config, split=split)
-        else:
-            dataset = load_dataset(path, split=split)
+        # load_dataset case: everything except filter_mic is a kwarg
+        exclude_from_kwargs = {"path", "config", "filter_mic"}
+        dataset_kwargs = {k: v for k, v in dataset_config.items()
+                          if k not in exclude_from_kwargs}
+        dataset_args = [path] if config is None else [path, config]
+        dataset = load_dataset(*dataset_args, **dataset_kwargs)
 
     if filter_mic is not None:
         audio_paths = dataset.remove_columns("audio")["file"]
