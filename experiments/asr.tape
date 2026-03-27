@@ -7,8 +7,13 @@ task LabelAudio
     :: dataset_config=@
     :: repo=@
 {
+    full_dataset_config=$dataset_config
+    if [ ! -f $template ] ; then
+        full_dataset_config="${repo}/${full_dataset_config}"
+    fi
+
     python $repo/scripts/label-audio.py \
-        --config $dataset_config \
+        --config $full_dataset_config \
         --out-path $dsus \
         --ssl-model $hubert_model \
         --layer $hubert_layer \
@@ -24,11 +29,16 @@ task BuildInstructions
     :: template=@
     :: repo=@
 {
+    full_template=$template
+    if [ ! -f $template ] ; then
+        full_template="${repo}/${full_template}"
+    fi
+
     # template, language pair
     python $repo/scripts/build_instructions.py \
         --src $test_dsus \
         --src-names dsu_seq \
-        --templates $template \
+        --templates $full_template \
         --template-key asr \
         --tokenizer $speech2text_tokenizer \
         --out $instructions
@@ -57,8 +67,12 @@ task DumpASRText
     :: transcript_field=@
     :: repo=@
 {
+    full_dataset_config=$dataset_config
+    if [ ! -f $template ] ; then
+        full_dataset_config="${repo}/${full_dataset_config}"
+    fi
     python $repo/scripts/extract_asr_text.py \
-        --config $dataset_config \
+        --config $full_dataset_config \
         --text-field $transcript_field \
         --corpus $references --metadata $metadata
 }

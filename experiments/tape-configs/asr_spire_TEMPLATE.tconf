@@ -8,20 +8,20 @@ global {
     ducttape_experimental_multiproc=true
 
     # The location at which results should be stored
-    ducttape_output=/mnt/scratch-artemis/bpop/SpireLM/experiments/asr-spire-outputs
+    ducttape_output=/path/to/ducttape/output
 
     # Fill with the path to SpireLM
-    repo=/mnt/data-artemis/bpop/SpireLM
+    repo=/path/to/repo
 
     seed=42
 
     # asr_dataset_config and asr_text_field: values for defining which
     dataset_config=(
         ASRDataset:
-            ls_clean="/mnt/data-artemis/bpop/SpireLM/dataset-configs/disk/librispeech_asr-clean-test.yml"
-            ls_other="/mnt/data-artemis/bpop/SpireLM/dataset-configs/disk/librispeech_asr-other-test.yml"
-            fleurs="/mnt/data-artemis/bpop/SpireLM/dataset-configs/fleurs-en_us-test.yml"
-            voxpopuli="/mnt/data-artemis/bpop/SpireLM/dataset-configs/disk/voxpopuli-en-test.yml"
+            ls_clean="dataset-configs/librispeech_asr-clean-test.yml"
+            ls_other="dataset-configs/librispeech_asr-other-test.yml"
+            fleurs="dataset-configs/fleurs-en_us-test.yml"
+            voxpopuli="dataset-configs/voxpopuli-en-test.yml"
     )
     transcript_field=(
         ASRDataset:
@@ -33,7 +33,7 @@ global {
 
     template=(
         Template:
-            spire_style="/mnt/data-artemis/bpop/SpireLM/instruction-templates/spire-style-template.json"
+            spire_style="instruction-templates/spire-style-template.json"
     )
 
     # Max tokens for decoding

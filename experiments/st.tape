@@ -1,13 +1,18 @@
 task DumpSTGoldTranscriptions
     > gold=gold.txt
     > metadata=metadata.json
-    :: st_dataset_config=@
-    :: st_text_field=@
+    :: dataset_config=@
+    :: transcript_field=@
     :: repo=@
 {
+    full_dataset_config=$dataset_config
+    if [ ! -f $template ] ; then
+        full_dataset_config="${repo}/${full_dataset_config}"
+    fi
+
     python $repo/scripts/extract_asr_text.py \
-        --config $st_dataset_config \
-        --text-field $st_text_field \
+        --config $repo/$full_dataset_config \
+        --text-field $transcript_field \
         --corpus $gold --metadata $metadata
 }
 
@@ -42,12 +47,16 @@ task LabelAudio
     :: hubert_layer=@
     :: km_model=@
     :: hubert_dtype=@
-    :: st_dataset_config=@
+    :: dataset_config=@
     :: repo=@
 {
+    full_dataset_config=$dataset_config
+    if [ ! -f $template ] ; then
+        full_dataset_config="${repo}/${full_dataset_config}"
+    fi
 
     python $repo/scripts/label-audio.py \
-        --config $st_dataset_config \
+        --config $repo/$full_dataset_config \
         --out-path $dsus \
         --ssl-model $hubert_model \
         --layer $hubert_layer \
@@ -66,11 +75,16 @@ task BuildDirectInstructions
     :: language_pair=@
     :: repo=@
 {
+    full_template=$template
+    if [ ! -f $template ] ; then
+        full_template="${repo}/${full_template}"
+    fi
+
     # template, language pair
     python $repo/scripts/build_instructions.py \
         --src $test_dsus \
         --src-names dsu_seq \
-        --templates $template \
+        --templates $full_template \
         --template-key $language_pair \
         --tokenizer $speech2text_tokenizer \
         --out $instructions
