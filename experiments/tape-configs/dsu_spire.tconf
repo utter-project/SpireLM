@@ -1,6 +1,10 @@
-import "dsu_constants.tconf"
-
 global {
+    # km_model, hubert_model, hubert_layer, hubert_dtype: values controlling the
+    # SSL+kmeans tokenizer used to turn speech into discrete units
+    km_model=(
+        KMModel:
+            spire="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000"
+    )
     hubert_model=(
         KMModel:
             spire="facebook/hubert-large-ll60k"
@@ -9,4 +13,5 @@ global {
         KMModel:
             spire=22
     )
+    hubert_dtype=(HubertDtype: fp32 bf16)
 }

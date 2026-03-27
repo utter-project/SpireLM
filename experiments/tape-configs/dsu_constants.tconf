@@ -1,3 +1,0 @@
-global {
-    hubert_dtype=(HubertDtype: fp32 bf16)
-}

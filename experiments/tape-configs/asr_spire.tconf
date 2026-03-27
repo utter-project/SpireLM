@@ -1,8 +1,0 @@
-import "uservars_asr_spire.tconf"
-import "asr_constants.tconf"
-import "models_spire.tconf"
-import "dsu_spire.tconf"
-
-global {
-
-}
