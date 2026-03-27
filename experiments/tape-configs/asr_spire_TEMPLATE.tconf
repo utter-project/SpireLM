@@ -16,14 +16,14 @@ global {
     seed=42
 
     # asr_dataset_config and asr_text_field: values for defining which
-    asr_dataset_config=(
+    dataset_config=(
         ASRDataset:
             ls_clean="/mnt/data-artemis/bpop/SpireLM/dataset-configs/disk/librispeech_asr-clean-test.yml"
             ls_other="/mnt/data-artemis/bpop/SpireLM/dataset-configs/disk/librispeech_asr-other-test.yml"
             fleurs="/mnt/data-artemis/bpop/SpireLM/dataset-configs/fleurs-en_us-test.yml"
             voxpopuli="/mnt/data-artemis/bpop/SpireLM/dataset-configs/disk/voxpopuli-en-test.yml"
     )
-    asr_text_field=(
+    transcript_field=(
         ASRDataset:
             ls_clean="text"
             ls_other="text"

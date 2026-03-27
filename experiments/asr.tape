@@ -4,11 +4,11 @@ task LabelAudio
     :: hubert_layer=@
     :: hubert_dtype=@
     :: km_model=@
-    :: asr_dataset_config=@
+    :: dataset_config=@
     :: repo=@
 {
     python $repo/scripts/label-audio.py \
-        --config $asr_dataset_config \
+        --config $dataset_config \
         --out-path $dsus \
         --ssl-model $hubert_model \
         --layer $hubert_layer \
@@ -53,13 +53,13 @@ task Decode
 task DumpASRText
     > references=references.txt
     > metadata=metadata.json
-    :: asr_dataset_config=@
-    :: asr_text_field=@
+    :: dataset_config=@
+    :: transcript_field=@
     :: repo=@
 {
     python $repo/scripts/extract_asr_text.py \
-        --config $asr_dataset_config \
-        --text-field $asr_text_field \
+        --config $dataset_config \
+        --text-field $transcript_field \
         --corpus $references --metadata $metadata
 }
 
