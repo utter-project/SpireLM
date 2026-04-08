@@ -1,46 +1,52 @@
-task DumpSTGoldTranscriptions
-    > gold=gold.txt
-    > metadata=metadata.json
+task DumpSrcRef
+    > src=src.txt
+    > ref=ref.txt
     :: dataset_config=@
     :: transcript_field=@
-    :: repo=@
-{
-    full_dataset_config=$dataset_config
-    if [ ! -f $template ] ; then
-        full_dataset_config="${repo}/${full_dataset_config}"
-    fi
-
-    python $repo/scripts/extract_asr_text.py \
-        --config $repo/$full_dataset_config \
-        --text-field $transcript_field \
-        --corpus $gold --metadata $metadata
-}
-
-task FetchFlores
-    > dev=dev
-    > devtest=devtest
-    :: flores_path=@
-    :: repo=@
-{
-    python $repo/scripts/hf2text.py --dev $dev --devtest $devtest
-}
-
-task RecoverReferencesFleurs
-    < devtest=@FetchFlores
-    < gold_src=$gold@DumpSTGoldTranscriptions
-    > references=ref.txt
+    :: translation_field=@
+    :: external_ref_path=@
     :: flores_src=@
     :: flores_tgt=@
     :: repo=@
 {
-    # assume the src is always English
-    python $repo/scripts/build_fleurs_references.py \
-        --flores-src "${devtest}/devtest.${flores_src}" \
-        --flores-tgt "${devtest}/devtest.${flores_tgt}" \
-        --fleurs-src $gold_src --fleurs-tgt-inferred $references
+    # goal of this task: unify FetchFlores, DumpSTGoldTranscriptions,
+    # DumpSTReferenceTranslations, and RecoverReferencesFleurs
+
+    # The external_ref_path is the path from which flores can be downloaded.
+    # It is necessary for fleurs but not CoVoST-2. If doing a CoVoST-2 config,
+    # external_ref_path should be defined but can be the empty string.
+
+    # On the other hand, translation_field is only used for CoVoST-2 and can
+    # be left blank for fleurs. I could combined these into a single variable,
+    # but it seemed a bit inelegant to do so.
+
+    full_dataset_config=$dataset_config
+    if [ ! -f $full_dataset_config ] ; then
+        full_dataset_config="${repo}/${full_dataset_config}"
+    fi
+
+    python $repo/scripts/extract_asr_text.py \
+        --config $full_dataset_config \
+        --text-field $transcript_field \
+        --corpus $src --metadata src_metadata.tmp
+
+
+    if [[ $translation_field != "" ]] ; then
+        python $repo/scripts/extract_asr_text.py \
+            --config $full_dataset_config \
+            --text-field $translation_field \
+            --corpus $ref --metadata ref_metadata.tmp
+    else
+        # Fetch flores
+        python $repo/scripts/hf2text.py --dev dev --devtest devtest --langs $flores_src $flores_tgt
+        # use fleurs srcs to find aligned translations in flores
+        python $repo/scripts/build_fleurs_references.py \
+            --flores-src "devtest/devtest.${flores_src}" \
+            --flores-tgt "devtest/devtest.${flores_tgt}" \
+            --fleurs-src $src --fleurs-tgt-inferred $ref
+    fi
 }
 
-# the tsv is not needed, so what do we do?
 task LabelAudio
     > dsus=dsu.txt
     :: hubert_model=@
@@ -51,12 +57,12 @@ task LabelAudio
     :: repo=@
 {
     full_dataset_config=$dataset_config
-    if [ ! -f $template ] ; then
+    if [ ! -f $full_dataset_config ] ; then
         full_dataset_config="${repo}/${full_dataset_config}"
     fi
 
     python $repo/scripts/label-audio.py \
-        --config $repo/$full_dataset_config \
+        --config $full_dataset_config \
         --out-path $dsus \
         --ssl-model $hubert_model \
         --layer $hubert_layer \
@@ -76,7 +82,7 @@ task BuildDirectInstructions
     :: repo=@
 {
     full_template=$template
-    if [ ! -f $template ] ; then
+    if [ ! -f $full_template ] ; then
         full_template="${repo}/${full_template}"
     fi
 
@@ -108,8 +114,8 @@ task DecodeDirect
 
 task CometDirect
     < hyps=@DecodeDirect
-    < src=$gold@DumpSTGoldTranscriptions
-    < references=@RecoverReferencesFleurs
+    < src=@DumpSrcRef
+    < references=$ref@DumpSrcRef
     > comet=comet.json
     > means=comet-means.json
     :: flores_src=@
@@ -126,11 +132,17 @@ task CometDirect
 
 task BleuDirect
     < hyps=@DecodeDirect
-    < references=@RecoverReferencesFleurs
+    < references=$ref@DumpSrcRef
     > bleu=bleu.json
     :: repo=@
 {
     sacrebleu --metrics bleu chrf --tokenize=flores200 $references < $hyps > $bleu
+}
+
+##### Get src and ref for all language pairs #####
+
+plan GetData {
+    reach DumpSrcRef via (LanguagePair: *)
 }
 
 ##### Tokenize audio for ST experiments #####

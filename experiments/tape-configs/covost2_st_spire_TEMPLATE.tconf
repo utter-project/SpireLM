@@ -1,6 +1,6 @@
 import "models_spire.tconf"
 import "dsu_spire.tconf"
-import "languages_spire.tconf"
+import "languages_spire_covost2.tconf"
 
 global {
 
@@ -22,8 +22,8 @@ global {
 
     max_tokens=(MaxTokens: 256 128 512)
 
-    external_ref_path="openlanguagedata/flores_plus"
-    dataset_config="dataset-configs/fleurs-en_us-test.yml"
-    transcript_field="raw_transcription"
-    translation_field=""
+    external_ref_path=""
+    dataset_config="dataset-configs/covost2-en_de-test.yml"
+    transcript_field="sentence"
+    translation_field="translation"
 }
