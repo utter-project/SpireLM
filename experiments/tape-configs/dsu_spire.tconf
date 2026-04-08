@@ -1,9 +1,12 @@
 global {
     # km_model, hubert_model, hubert_layer, hubert_dtype: values controlling the
     # SSL+kmeans tokenizer used to turn speech into discrete units
+
+    # This is a relative path in the SpireLM directory. In order to make it work,
+    # download the k-means model linked in the repo and give it this name.
     km_model=(
         KMModel:
-            spire="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000"
+            spire="kmeans_model.joblib"
     )
     hubert_model=(
         KMModel:

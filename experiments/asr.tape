@@ -8,8 +8,13 @@ task LabelAudio
     :: repo=@
 {
     full_dataset_config=$dataset_config
-    if [ ! -f $template ] ; then
+    if [ ! -f $full_dataset_config ] ; then
         full_dataset_config="${repo}/${full_dataset_config}"
+    fi
+
+    km_model_path=$km_model
+    if [ ! -f $km_model_path ] ; then
+        km_model_path="${repo}/${km_model_path}"
     fi
 
     python $repo/scripts/label-audio.py \
@@ -17,7 +22,7 @@ task LabelAudio
         --out-path $dsus \
         --ssl-model $hubert_model \
         --layer $hubert_layer \
-        --kmeans-model $km_model \
+        --kmeans-model $km_model_path \
         --batch-size 4 \
         --dtype $hubert_dtype
 }
