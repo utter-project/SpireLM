@@ -1,8 +1,10 @@
-from os.path import join, basename, splitext
+from os.path import join, basename, splitext, exists
 from functools import partial
+import yaml
 
 import soundfile as sf
 import numpy as np
+import torch
 from torch.utils.data import Dataset, Sampler, SequentialSampler, RandomSampler, BatchSampler, DataLoader
 from datasets import load_from_disk, load_dataset, Audio
 
@@ -18,11 +20,6 @@ class AudioTSVDataset(Dataset):
             self.data = [(join(root, wav), int(n_samples)) for (wav, n_samples) in lines]
         else:
             self.data = examples
-
-    def select(self, indices):
-        # return a new dataset containing the relevant indices from self
-        selected = [self.data[i] for i in indices]
-        return AudioTSVDataset(examples=selected)
 
     def __len__(self):
         return len(self.data)
@@ -67,23 +64,11 @@ class SafeAudioDataset(Dataset):
             return ex
 
 
-def collate_fn(inputs, feature_extractor):
-    audios = [sf.read(inp["audio_path"])[0] for inp in inputs]
-    batch = feature_extractor(
-        audios,
-        sampling_rate=feature_extractor.sampling_rate,
-        return_tensors="pt",
-        padding=True,
-        return_attention_mask=True
-    )
-    batch["indices"] = [inp["idx"] for inp in inputs]
-    if "seconds" not in inputs[0]:
-        batch["seconds"] = [audio.shape[0] / feature_extractor.sampling_rate for audio in audios]
-    return batch
-
-
-def collate_hf(inputs, feature_extractor):
-    audios = [inp["audio"]["array"] for inp in inputs]
+def collate_fn(inputs, feature_extractor, hf_dataset=True):
+    if hf_dataset:
+        audios = [inp["audio"]["array"] for inp in inputs]
+    else:
+        audios = [sf.read(inp["audio_path"])[0] for inp in inputs]
     batch = feature_extractor(
         audios,
         sampling_rate=feature_extractor.sampling_rate,
@@ -192,28 +177,45 @@ class TokenBatchSampler(BatchSampler):
         raise TypeError("The number of batches in a token-batched epoch is not known in advance")
 
 
-def load_hf_audio_dataset(
-        path, path_extra="", split="train",
-        resample_to=None, from_disk=True,
-        start_ix=0, n_examples=0, remove_audio=False, add_index=False, filter_mic=None):
+def _load_dataset_from_config(config):
+    with open(config) as f:
+        dataset_config = yaml.safe_load(f)
+    path = dataset_config["path"]  # only required field
+    config = dataset_config.get("config", None)
+    split = dataset_config.get("split", None)
+    filter_mic = dataset_config.get("filter_mic", None)  # only for VCTK
 
-    if from_disk:
-        if "openslr/librispeech_asr" in path:
-            assert path_extra
-            split = split + "." + path_extra
-        elif path_extra:
-            path = join(path, path_extra)
+    # config-based smart dataset load
+    if exists(path) and exists(join(path, "dataset_dict.json")):
         dataset = load_from_disk(path)[split]
+    elif exists(path) and path.endswith(".tsv"):
+        return AudioTSVDataset(tsv_path=path), True
     else:
-        if path_extra:
-            dataset = load_dataset(path, path_extra, split=split)
-        else:
-            dataset = load_dataset(path, split=split)
+        # load_dataset case: everything except filter_mic is a kwarg
+        exclude_from_kwargs = {"path", "config", "filter_mic"}
+        dataset_kwargs = {k: v for k, v in dataset_config.items()
+                          if k not in exclude_from_kwargs}
+        dataset_args = [path] if config is None else [path, config]
+        dataset = load_dataset(*dataset_args, **dataset_kwargs)
 
-    if remove_audio:
-        dataset = dataset.remove_columns("audio")
-    elif resample_to is not None:
-        dataset = dataset.cast_column("audio", Audio(sampling_rate=resample_to))
+    if filter_mic is not None:
+        audio_paths = dataset.remove_columns("audio")["file"]
+        mic = [splitext(basename(audio_path))[0].split("_")[-1] for audio_path in audio_paths]
+        dataset = dataset.add_column(name="mic", column=mic)
+        if filter_mic is not None:
+            dataset = dataset.filter(lambda ex: ex["mic"] == filter_mic)
+
+    return dataset, False
+
+
+def _postprocess_dataset(
+        dataset, resample_to=None, start_ix=0, n_examples=0, remove_audio=False, add_index=False):
+
+    if "audio" in dataset.column_names:
+        if remove_audio:
+            dataset = dataset.remove_columns("audio")
+        elif resample_to is not None:
+            dataset = dataset.cast_column("audio", Audio(sampling_rate=resample_to))
 
     dataset = dataset.skip(start_ix)
     if n_examples > 0:
@@ -222,64 +224,106 @@ def load_hf_audio_dataset(
 
     if add_index:
         dataset = dataset.add_column(name="idx", column=list(range(len(dataset))))
-
-    if path == "CSTR-Edinburgh/vctk":
-        # this is hardcoding, but it's a salient fact for a useful dataset.
-        audio_paths = dataset.remove_columns("audio")["file"]
-        mic = [splitext(basename(audio_path))[0].split("_")[-1] for audio_path in audio_paths]
-        dataset = dataset.add_column(name="mic", column=mic)
-        if filter_mic is not None:
-            dataset = dataset.filter(lambda ex: ex["mic"] == filter_mic)
-
     return dataset
 
 
-def build_dataloader(
-        path, feature_extractor, num_workers=0, batch_size=1, dataset_type="tsv", start_ix=0,
-        n_examples=0, path_extra="en", hf_location="disk", hf_split="test",
-        resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
-        token_batching=False, example_lengths=None, collator=None, placeholder_len=0,
-        filter_mic=None):
+def load_audio_dataset(
+        config, resample_to=None, start_ix=0, n_examples=0, remove_audio=False,
+        add_index=False):
 
-    # example_lengths is used to sort examples so that padding can be minimized.
-    # This is useful for token batching. If passed, it should be a numpy array
-    # whose length is the same as that of the corpus (not the number of examples
-    # loaded; the WHOLE corpus). (future TODO: let it be the same length as
-    # n_examples.)
+    dataset, is_tsv = _load_dataset_from_config(config)
+    dataset = _postprocess_dataset(
+        dataset,
+        resample_to=resample_to,
+        start_ix=start_ix,
+        n_examples=n_examples,
+        remove_audio=remove_audio,
+        add_index=add_index)
+    return dataset, is_tsv
+
+
+class AdaptiveWeightedMultiDataLoader:
+    def __init__(self, loaders, target_weights=None, alpha=0.02):
+        self.loaders = loaders
+        if target_weights is not None:
+            self.target_weights = torch.tensor(target_weights, dtype=torch.float)
+        else:
+            # if unspecified, use uniform weights
+            self.target_weights = torch.ones(len(loaders))
+        self.target_weights /= self.target_weights.sum()
+
+        self.alpha = alpha
+
+        # initialize duration estimates
+        self.avg_lengths = torch.ones(len(loaders))
+
+    def _sampling_probs(self):
+        probs = self.target_weights / self.avg_lengths
+        return probs / probs.sum()
+
+    def __iter__(self):
+        iters = [iter(l) for l in self.loaders]
+
+        while True:
+            probs = self._sampling_probs()
+            idx = torch.multinomial(probs, 1).item()
+
+            try:
+                batch = next(iters[idx])
+            except StopIteration:
+                iters[idx] = iter(self.loaders[idx])
+                batch = next(iters[idx])
+
+            # assume batch contains audio tensors
+            # compute batch average duration
+            lengths = batch["seconds"]
+            # batch_avg = lengths.float().mean()
+            batch_avg = sum(lengths) / len(lengths)
+
+            # EMA update
+            self.avg_lengths[idx] = (
+                (1 - self.alpha) * self.avg_lengths[idx]
+                + self.alpha * batch_avg
+            )
+
+            yield batch
+
+
+def _build_single_dataloader(
+        config,
+        feature_extractor, num_workers=0, batch_size=1, start_ix=0,
+        n_examples=0,
+        resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
+        token_batching=False, example_lengths=None, collator=None, placeholder_len=0):
 
     # Build dataset
-    if dataset_type == "tsv":
-        dataset = AudioTSVDataset(tsv_path=path)
-    else:
-        dataset = load_hf_audio_dataset(
-            path,
-            path_extra=path_extra,
-            resample_to=resample_to,
-            split=hf_split,
-            from_disk=hf_location == "disk",
-            add_index=True,
-            start_ix=start_ix,
-            n_examples=n_examples,
-            filter_mic=filter_mic
-        )
+    dataset, is_tsv = load_audio_dataset(
+        config,
+        add_index=True,
+        start_ix=start_ix,
+        n_examples=n_examples,
+        resample_to=resample_to
+    )
 
+    lengths = None
     if example_lengths is not None:
+        # will fail if lengths are provided but start_ix == n_examples == 0?
         lengths = np.load(example_lengths)[start_ix: start_ix + n_examples]
         print("Average length of this shard", lengths.mean())
-    else:
-        lengths = None
 
-    length_before_validating = len(dataset)
-    print("Dataset length: {}".format(length_before_validating))
+    print(f"Dataset length: {len(dataset)}")
 
     # build the collator
     if collator is None:
-        # if no custom collator is provided, use one of the ones defined in this file
-        collate_func = collate_fn if dataset_type == "tsv" else collate_hf
-        collator = partial(collate_func, feature_extractor=feature_extractor)
+        # if no custom collator is provided, use the one defined in this file
+        collator = partial(
+            collate_fn,
+            feature_extractor=feature_extractor,
+            hf_dataset=not is_tsv
+        )
 
     if token_batching:
-        if dataset_type == "tsv":
+        if is_tsv:
             sampler = LengthKeySortedAudioSampler(dataset, length_key="n_samples")
             batch_sampler = NaiveTokenBatchSampler(dataset, sampler, batch_size, length_key="n_samples")
         else:
@@ -289,8 +333,7 @@ def build_dataloader(
         sampler = RandomSampler(dataset, generator=torch_random) if shuffle else SequentialSampler(dataset)
         batch_sampler = BatchSampler(sampler, batch_size=batch_size, drop_last=False)
 
-    if dataset_type != "tsv":
-        # in theory, this should make it possible to handle missing audio gracefully
+    if not is_tsv:
         dataset = SafeAudioDataset(dataset, placeholder_len=placeholder_len)
     loader = DataLoader(
         dataset,
@@ -301,9 +344,59 @@ def build_dataloader(
     )
 
     # count number of batches
-    if token_batching:
-        n_batches = len([b for b in batch_sampler])
-    else:
-        n_batches = len(loader)
+    n_batches = len([b for b in batch_sampler]) if token_batching else len(loader)
 
-    return loader, n_batches, length_before_validating
+    return loader, n_batches
+
+
+def build_dataloader(
+        config,
+        feature_extractor,
+        dataset_weights=None, num_workers=0, batch_size=1, start_ix=0, n_examples=0,
+        resample_to=None, shuffle=False, torch_random=None, pin_memory=False,
+        token_batching=False, example_lengths=None, collator=None, placeholder_len=0):
+
+    """
+    Main function for building a DataLoader object based on one or more yml
+    config files. The config defines properties of the dataset that are not
+    hyperparameter- or model-dependent, such as
+        - the dataset path (could be a Hugging Face hub path or a location on disk)
+        - the config (i.e. "en_us" when calling load_dataset("google/fleurs", "en_us")
+        - the split
+
+    In other words the config is about the Dataset but not the DataLoader. The
+    remain arguments define how the DataLoader is supposed to operate, as well
+    as some filtering options for examples (for example, take 1000 examples starting
+    at index 200000).
+    """
+    if isinstance(config, str):
+        config = [config]
+
+    loaders = []
+    n_batches = []
+
+    for cf in config:
+        single_loader, single_n_batches = _build_single_dataloader(
+            config=cf,
+            feature_extractor=feature_extractor,
+            num_workers=num_workers,
+            batch_size=batch_size,
+            start_ix=start_ix,
+            n_examples=n_examples,
+            resample_to=resample_to,
+            shuffle=shuffle,
+            torch_random=torch_random,
+            pin_memory=pin_memory,
+            token_batching=token_batching,
+            example_lengths=example_lengths,
+            collator=collator,
+            placeholder_len=placeholder_len
+        )
+        loaders.append(single_loader)
+        n_batches.append(single_n_batches)
+
+    if len(config) == 1:
+        return loaders[0], n_batches[0]
+
+    weighted_loader = AdaptiveWeightedMultiDataLoader(loaders, dataset_weights)
+    return weighted_loader, sum(n_batches)

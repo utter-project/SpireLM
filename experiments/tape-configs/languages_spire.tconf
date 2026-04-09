@@ -11,15 +11,6 @@ global {
             en_pt=eng_Latn
             en_ru=eng_Latn
             en_zh=eng_Latn
-            de_en=deu_Latn
-            es_en=spa_Latn
-            fr_en=fra_Latn
-            it_en=ita_Latn
-            ko_en=kor_Hang
-            nl_en=nld_Latn
-            pt_en=por_Latn
-            ru_en=rus_Cyrl
-            zh_en=cmn_Hans
     )
 
     flores_tgt=(
@@ -33,15 +24,6 @@ global {
             en_pt=por_Latn
             en_ru=rus_Cyrl
             en_zh=cmn_Hans
-            de_en=eng_Latn
-            es_en=eng_Latn
-            fr_en=eng_Latn
-            it_en=eng_Latn
-            ko_en=eng_Latn
-            nl_en=eng_Latn
-            pt_en=eng_Latn
-            ru_en=eng_Latn
-            zh_en=eng_Latn
     )
 
     wmt_src=(
@@ -55,15 +37,6 @@ global {
             en_pt=en
             en_ru=en
             en_zh=en
-            de_en=de
-            es_en=es
-            fr_en=fr
-            it_en=it
-            ko_en=ko
-            nl_en=nl
-            pt_en=pt
-            ru_en=ru
-            zh_en=zh
     )
 
     wmt_tgt=(
@@ -77,15 +50,6 @@ global {
             en_pt=pt
             en_ru=ru
             en_zh=zh
-            de_en=en
-            es_en=en
-            fr_en=en
-            it_en=en
-            ko_en=en
-            nl_en=en
-            pt_en=en
-            ru_en=en
-            zh_en=en
     )
 
     src_name=(
@@ -99,15 +63,6 @@ global {
             en_pt=English
             en_ru=English
             en_zh=English
-            de_en=German
-            es_en=Spanish
-            fr_en=French
-            it_en=Italian
-            ko_en=Korean
-            nl_en=Dutch
-            pt_en=Portuguese
-            ru_en=Russian
-            zh_en=Chinese
     )
     tgt_name=(
         LanguagePair:
@@ -120,15 +75,6 @@ global {
             en_pt=Portuguese
             en_ru=Russian
             en_zh=Chinese
-            de_en=English
-            es_en=English
-            fr_en=English
-            it_en=English
-            ko_en=English
-            nl_en=English
-            pt_en=English
-            ru_en=English
-            zh_en=English
     )
 
     seamless_src=(
@@ -142,15 +88,6 @@ global {
             en_pt=eng
             en_ru=eng
             en_zh=eng
-            de_en=deu
-            es_en=spa
-            fr_en=fra
-            it_en=ita
-            ko_en=kor
-            nl_en=nld
-            pt_en=por
-            ru_en=rus
-            zh_en=cmn
     )
 
     seamless_tgt=(
@@ -164,15 +101,6 @@ global {
             en_pt=por
             en_ru=rus
             en_zh=cmn
-            de_en=eng
-            es_en=eng
-            fr_en=eng
-            it_en=eng
-            ko_en=eng
-            nl_en=eng
-            pt_en=eng
-            ru_en=eng
-            zh_en=eng
     )
 
     covost_src=(
@@ -186,15 +114,6 @@ global {
             en_pt=en
             en_ru=en
             en_zh=en
-            de_en=de
-            es_en=es
-            fr_en=fr
-            it_en=it
-            ko_en=ko
-            nl_en=nl
-            pt_en=pt
-            ru_en=ru
-            zh_en=zh-CN
     )
 
     covost_tgt=(
@@ -208,15 +127,6 @@ global {
             en_pt=pt
             en_ru=ru
             en_zh=zh-CN
-            de_en=en
-            es_en=en
-            fr_en=en
-            it_en=en
-            ko_en=en
-            nl_en=en
-            pt_en=en
-            ru_en=en
-            zh_en=en
     )
 
     language_pair=(
@@ -230,15 +140,6 @@ global {
             en_pt
             en_ru
             en_zh
-            de_en
-            es_en
-            fr_en
-            it_en
-            ko_en
-            nl_en
-            pt_en
-            ru_en
-            zh_en
     )
 
     sonar_tgt=(
@@ -252,14 +153,5 @@ global {
             en_pt=por_Latn
             en_ru=rus_Cyrl
             en_zh=zho_Hans
-            de_en=eng_Latn
-            es_en=eng_Latn
-            fr_en=eng_Latn
-            it_en=eng_Latn
-            ko_en=eng_Latn
-            nl_en=eng_Latn
-            pt_en=eng_Latn
-            ru_en=eng_Latn
-            zh_en=eng_Latn
     )
 }

@@ -1,0 +1,34 @@
+import "models_spire.tconf"
+import "dsu_spire.tconf"
+import "languages_spire_covost2.tconf"
+
+global {
+
+    ducttape_experimental_imports=true
+    ducttape_experimental_submitters=true
+    ducttape_experimental_multiproc=true
+
+    ducttape_output=/path/to/ducttape/output
+    repo=/path/to/repo
+
+    seed=42
+
+    template=(
+        Template:
+            spire_style="instruction-templates/spire-style-template.json"
+    )
+
+    comet_model="Unbabel/wmt22-comet-da"
+
+    max_tokens=(MaxTokens: 256 128 512)
+
+    external_ref_path=""
+    # LanguagePair branch points here must match languages_spire_covost2.tconf
+    dataset_config=(
+        LanguagePair:
+            en_de="dataset-configs/covost2-en_de-test.yml"
+            en_zh="dataset-configs/covost2-en_zh-test.yml"
+    )
+    transcript_field="sentence"
+    translation_field="translation"
+}

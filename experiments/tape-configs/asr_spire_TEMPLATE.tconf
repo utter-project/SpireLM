@@ -1,0 +1,44 @@
+import "models_spire.tconf"
+import "dsu_spire.tconf"
+
+global {
+
+    ducttape_experimental_imports=true
+    ducttape_experimental_submitters=true
+    ducttape_experimental_multiproc=true
+
+    # The location at which results should be stored
+    ducttape_output=/path/to/ducttape/output
+
+    # Fill with the path to SpireLM
+    repo=/path/to/repo
+
+    seed=42
+
+    # asr_dataset_config and asr_text_field: values for defining which
+    dataset_config=(
+        ASRDataset:
+            ls_clean="dataset-configs/librispeech_asr-clean-test.yml"
+            ls_other="dataset-configs/librispeech_asr-other-test.yml"
+            fleurs="dataset-configs/fleurs-en_us-test.yml"
+            voxpopuli="dataset-configs/voxpopuli-en-test.yml"
+    )
+    transcript_field=(
+        ASRDataset:
+            ls_clean="text"
+            ls_other="text"
+            fleurs="raw_transcription"
+            voxpopuli="normalized_text"
+    )
+
+    template=(
+        Template:
+            spire_style="instruction-templates/spire-style-template.json"
+    )
+
+    # Max tokens for decoding
+    max_tokens=(MaxTokens: 256 128 512)
+
+    # text normalization for evaluations
+    normalizer=(Normalizer: english basic)
+}

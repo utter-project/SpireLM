@@ -1,0 +1,29 @@
+import "models_spire.tconf"
+import "dsu_spire.tconf"
+import "languages_spire.tconf"
+
+global {
+
+    ducttape_experimental_imports=true
+    ducttape_experimental_submitters=true
+    ducttape_experimental_multiproc=true
+
+    ducttape_output=/path/to/ducttape/output
+    repo=/path/to/repo
+
+    seed=42
+
+    template=(
+        Template:
+            spire_style="instruction-templates/spire-style-template.json"
+    )
+
+    comet_model="Unbabel/wmt22-comet-da"
+
+    max_tokens=(MaxTokens: 256 128 512)
+
+    external_ref_path="openlanguagedata/flores_plus"
+    dataset_config="dataset-configs/fleurs-en_us-test.yml"
+    transcript_field="raw_transcription"
+    translation_field=""
+}

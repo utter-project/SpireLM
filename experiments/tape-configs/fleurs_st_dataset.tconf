@@ -1,0 +1,13 @@
+global {
+    flores_path="openlanguagedata/flores_plus"
+
+    dataset_config=(
+        STDataset:
+            fleurs="dataset-configs/fleurs-en_us-test.yml"
+    )
+
+    transcript_field=(
+        STDataset:
+            fleurs="raw_transcription"
+    )
+}

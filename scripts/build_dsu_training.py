@@ -15,8 +15,10 @@ import random
 
 from tqdm import tqdm
 import numpy as np
-from datasets import load_dataset, disable_caching
-from spire.data import load_hf_audio_dataset
+from datasets import disable_caching
+
+from spire.cli import dataset_parser
+from spire.data import load_audio_dataset
 from spire.utils import load_template
 
 
@@ -33,7 +35,6 @@ def load_librispeech_pc_transcripts(transcripts, transcript_column="text"):
         for line in f:
             transcript_metadata = json.loads(line)
             audio_id = splitext(basename(transcript_metadata['audio_filepath']))[0]
-            # audio_id = transcript_metadata['id']
             id2transcript[audio_id] = transcript_metadata[transcript_column]
     return id2transcript
 
@@ -141,20 +142,9 @@ def main(args):
 
     speech_turn = load_template(args.templates, args.template_key)
 
-    if args.audio_dataset:
-        disable_caching()
-        dataset = load_hf_audio_dataset(
-            args.dataset_path,
-            path_extra=args.path_extra,
-            split=args.split,
-            from_disk=True,
-            remove_audio=True
-        )
-    else:
-        # for spite
-        dataset = load_dataset(
-            args.dataset_path, args.path_extra, trust_remote_code=True
-        )[args.split]
+    disable_caching()
+    assert len(args.config) == 1
+    dataset, _ = load_audio_dataset(args.config, remove_audio=True)
 
     # iterate_over_files allows this to handle multiple shards. It's easier
     # if it's all already combined but I guess this is a nice generalization.
@@ -207,14 +197,10 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(parents=[dataset_parser])
     parser.add_argument("--dsus", nargs="+")
     parser.add_argument("--templates", default=None, help="json prompt template")
     parser.add_argument("--template-key", default="template")
-    parser.add_argument("--audio-dataset", action="store_true")
-    parser.add_argument("--dataset-path")
-    parser.add_argument("--path-extra")
-    parser.add_argument("--split")
     parser.add_argument("--transcript-column", default="text")  # "raw_text" for VoxPopuli
     parser.add_argument("--external-transcript-column", default="text")
     parser.add_argument("--external-transcripts", help="For LibriSpeech-PC and People's Speech")

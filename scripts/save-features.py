@@ -13,7 +13,7 @@ from spire.cli import ssl_parser, dataset_parser, randomness_parser
 
 
 def main(args):
-
+    assert len(args.config) == 1
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
 
@@ -37,22 +37,16 @@ def main(args):
     if args.compile:
         featurizer = torch.compile(featurizer)
 
-    loader, n_batches, raw_length = build_dataloader(
-        path=args.data_path,
+    loader, n_batches = build_dataloader(
+        config=args.config,
         feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        dataset_type=args.dataset_type,
         start_ix=args.start_ix,
         n_examples=args.n_examples,
-        path_extra=args.path_extra,
-        hf_split=args.hf_split,
         resample_to=args.resample_to,
-        hf_location="disk" if args.dataset_type == "hf-disk" else "cache",
-        shuffle=True,
-        torch_random=torch_random,
-        pin_memory=not args.cpu,
-        filter_mic=args.filter_mic
+        token_batching=args.token_batching,
+        example_lengths=args.example_lengths
     )
 
     # past: specified hour-long shards by multiplying hubert fps by 3600

@@ -1,64 +1,77 @@
-task DumpSTGoldTranscriptions
-    > gold=gold.txt
-    > metadata=metadata.json
-    :: st_dataset=@
-    :: st_path_extra=@
-    :: dataset_type=@
-    :: st_split=@
-    :: st_text_field=@
-    :: repo=@
-{
-    python $repo/scripts/extract_asr_text.py \
-        --path $st_dataset --path-extra $st_path_extra --split $st_split --text-field $st_text_field \
-        --dataset-type $dataset_type --corpus $gold --metadata $metadata
-}
-
-task FetchFlores
-    > dev=dev
-    > devtest=devtest
-    :: flores_path=@
-    :: repo=@
-{
-    python $repo/scripts/hf2text.py --dev $dev --devtest $devtest
-}
-
-task RecoverReferencesFleurs
-    < devtest=@FetchFlores
-    < gold_src=$gold@DumpSTGoldTranscriptions
-    > references=ref.txt
+task DumpSrcRef
+    > src=src.txt
+    > ref=ref.txt
+    :: dataset_config=@
+    :: transcript_field=@
+    :: translation_field=@
+    :: external_ref_path=@
     :: flores_src=@
     :: flores_tgt=@
     :: repo=@
 {
-    # assume the src is always English
-    python $repo/scripts/build_fleurs_references.py \
-        --flores-src "${devtest}/devtest.${flores_src}" \
-        --flores-tgt "${devtest}/devtest.${flores_tgt}" \
-        --fleurs-src $gold_src --fleurs-tgt-inferred $references
+    # goal of this task: unify FetchFlores, DumpSTGoldTranscriptions,
+    # DumpSTReferenceTranslations, and RecoverReferencesFleurs
+
+    # The external_ref_path is the path from which flores can be downloaded.
+    # It is necessary for fleurs but not CoVoST-2. If doing a CoVoST-2 config,
+    # external_ref_path should be defined but can be the empty string.
+
+    # On the other hand, translation_field is only used for CoVoST-2 and can
+    # be left blank for fleurs. I could combined these into a single variable,
+    # but it seemed a bit inelegant to do so.
+
+    full_dataset_config=$dataset_config
+    if [ ! -f $full_dataset_config ] ; then
+        full_dataset_config="${repo}/${full_dataset_config}"
+    fi
+
+    python $repo/scripts/extract_asr_text.py \
+        --config $full_dataset_config \
+        --text-field $transcript_field \
+        --corpus $src --metadata src_metadata.tmp
+
+
+    if [[ $translation_field != "" ]] ; then
+        python $repo/scripts/extract_asr_text.py \
+            --config $full_dataset_config \
+            --text-field $translation_field \
+            --corpus $ref --metadata ref_metadata.tmp
+    else
+        # Fetch flores
+        python $repo/scripts/hf2text.py --dev dev --devtest devtest --langs $flores_src $flores_tgt
+        # use fleurs srcs to find aligned translations in flores
+        python $repo/scripts/build_fleurs_references.py \
+            --flores-src "devtest/devtest.${flores_src}" \
+            --flores-tgt "devtest/devtest.${flores_tgt}" \
+            --fleurs-src $src --fleurs-tgt-inferred $ref
+    fi
 }
 
-# the tsv is not needed, so what do we do?
 task LabelAudio
     > dsus=dsu.txt
     :: hubert_model=@
     :: hubert_layer=@
-    :: km_model=@
     :: hubert_dtype=@
-    :: st_dataset=@
-    :: path_extra=@
-    :: dataset_type=@
+    :: km_model=@
+    :: dataset_config=@
     :: repo=@
 {
+    full_dataset_config=$dataset_config
+    if [ ! -f $full_dataset_config ] ; then
+        full_dataset_config="${repo}/${full_dataset_config}"
+    fi
+
+    km_model_path=$km_model
+    if [ ! -f $km_model_path ] ; then
+        km_model_path="${repo}/${km_model_path}"
+    fi
 
     python $repo/scripts/label-audio.py \
-        --data-path $st_dataset \
-        --dataset-type $dataset_type \
-        --path-extra $path_extra \
-        --hf-split test \
+        --config $full_dataset_config \
         --out-path $dsus \
         --ssl-model $hubert_model \
         --layer $hubert_layer \
-        --kmeans-model $km_model \
+        --kmeans-model $km_model_path \
         --batch-size 4 \
         --dtype $hubert_dtype
 }
@@ -73,11 +86,16 @@ task BuildDirectInstructions
     :: language_pair=@
     :: repo=@
 {
+    full_template=$template
+    if [ ! -f $full_template ] ; then
+        full_template="${repo}/${full_template}"
+    fi
+
     # template, language pair
     python $repo/scripts/build_instructions.py \
         --src $test_dsus \
         --src-names dsu_seq \
-        --templates $template \
+        --templates $full_template \
         --template-key $language_pair \
         --tokenizer $speech2text_tokenizer \
         --out $instructions
@@ -101,8 +119,8 @@ task DecodeDirect
 
 task CometDirect
     < hyps=@DecodeDirect
-    < src=$gold@DumpSTGoldTranscriptions
-    < references=@RecoverReferencesFleurs
+    < src=@DumpSrcRef
+    < references=$ref@DumpSrcRef
     > comet=comet.json
     > means=comet-means.json
     :: flores_src=@
@@ -119,124 +137,31 @@ task CometDirect
 
 task BleuDirect
     < hyps=@DecodeDirect
-    < references=@RecoverReferencesFleurs
+    < references=$ref@DumpSrcRef
     > bleu=bleu.json
     :: repo=@
 {
     sacrebleu --metrics bleu chrf --tokenize=flores200 $references < $hyps > $bleu
 }
 
-##### Self-cascaded ST tasks #####
+##### Get src and ref for all language pairs #####
 
-task BuildASRInstructions
-    < test_dsus=$dsus@LabelAudio
-    > instructions=instructions.json
-    :: speech2text_tokenizer=@
-    :: template=@
-    :: repo=@
-{
-    # template, language pair
-    python $repo/scripts/build_instructions.py \
-        --src $test_dsus \
-        --src-names dsu_seq \
-        --templates $template \
-        --template-key asr \
-        --tokenizer $speech2text_tokenizer \
-        --out $instructions
-}
-
-task Transcribe
-    < instructions=@BuildASRInstructions
-    > hyps=hyps.txt
-    :: speech2text_model=@
-    :: speech2text_tokenizer=@
-    :: max_tokens=@
-    :: repo=@
-{
-    python $repo/scripts/inference.py \
-        --inpaths $instructions \
-        --outpaths $hyps \
-        --model $speech2text_model \
-        --tokenizer $speech2text_tokenizer \
-        --max-length $max_tokens
-}
-
-##### Minblaser Experiments #####
-
-plan DirectTranslationMinblaser {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600 lmt_4B_minblaser_4_5) * (HubertDtype: bf16) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-plan EvaluationMinblaser {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_minblaser_4_5_2000 lmt_4B_minblaser_4_5_3600 lmt_4B_minblaser_4_5_5600 lmt_4B_minblaser_4_5) * (HubertDtype: bf16) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-##### Explicit Experiments #####
-
-plan DirectTranslationExplicit {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_explicit) * (HubertDtype: bf16) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (Template: explicit)
-}
-
-plan EvaluationExplicit {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_explicit) * (HubertDtype: bf16) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh) * (Template: explicit)
-}
-
-##### VCTK30 Experiments #####
-
-plan DirectTranslationVCTK30 {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_vctk30h) * (HubertDtype: bf16) * (KMModel: vctk_mic1_30h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-plan EvaluationVCTK30 {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_vctk30h) * (HubertDtype: bf16) * (KMModel: vctk_mic1_30h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-##### Giga20 Experiments #####
-
-plan DirectTranslationGiga20 {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_giga20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-plan EvaluationCV20 {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_giga20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-##### CV20 Experiments #####
-
-plan DirectTranslationCV20 {
-    reach DecodeDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
-plan EvaluationCV20 {
-    reach CometDirect, BleuDirect via (Speech2TextModel: lmt_4B_cv20h_1200 lmt_4B_cv20h_2000) * (HubertDtype: bf16) * (KMModel: cv20h) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+plan GetData {
+    reach DumpSrcRef via (LanguagePair: *)
 }
 
 ##### Tokenize audio for ST experiments #####
 
 plan Labelize {
-    reach LabelAudio
-}
-
-##### Prep data #####
-
-plan DirectInstructions {
-    reach BuildDirectInstructions via (Speech2TextModel: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+    reach LabelAudio via (HubertDtype: bf16)
 }
 
 ##### Direct ST #####
 
-plan DirectTranslation {
-    reach DecodeDirect via (Speech2TextModel: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
-}
-
 plan DirectTranslationAll {
-    reach DecodeDirect via (Speech2TextModel: *) * (LanguagePair: *)
-}
-
-plan Evaluation {
-    reach CometDirect, BleuDirect via (Speech2TextModel: *) * (LanguagePair: en_de en_es en_fr en_it en_ko en_nl en_pt en_ru en_zh)
+    reach DecodeDirect via (Speech2TextModel: *) * (LanguagePair: *) * (HubertDtype: bf16) * (Template: *)
 }
 
 plan EvaluationAll {
-    reach CometDirect, BleuDirect via (Speech2TextModel: *) * (LanguagePair: *)
+    reach CometDirect, BleuDirect via (Speech2TextModel: *) * (LanguagePair: *) * (HubertDtype: bf16) * (Template: *)
 }

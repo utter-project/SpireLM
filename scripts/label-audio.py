@@ -18,6 +18,7 @@ def pred2str_single(pred):
 
 
 def main(args):
+    assert len(args.config) == 1
     dtypes = {"bf16": torch.bfloat16, "fp32": torch.float32}
     dtype = dtypes[args.dtype]
 
@@ -37,18 +38,14 @@ def main(args):
     if args.compile:
         labeler = torch.compile(labeler)
 
-    loader, n_batches, raw_length = build_dataloader(
-        path=args.data_path,
+    loader, n_batches = build_dataloader(
+        config=args.config,
         feature_extractor=feature_extractor,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        dataset_type=args.dataset_type,
         start_ix=args.start_ix,
         n_examples=args.n_examples,
-        path_extra=args.path_extra,
-        hf_split=args.hf_split,
         resample_to=args.resample_to,
-        hf_location="disk" if args.dataset_type == "hf-disk" else "cache",
         token_batching=args.token_batching,
         example_lengths=args.example_lengths
     )
@@ -76,9 +73,8 @@ def main(args):
                 indices.extend(batch.indices)
                 lengths.extend(batch.seconds)
 
-        # idx2labels = dict(zip(indices, labels))
         idx2labels = {i: (label, length) for i, label, length in zip(indices, labels, lengths)}
-        for i in range(raw_length):
+        for i in range(len(loader.dataset)):
             if i not in idx2labels:
                 # this should be extremely rare
                 f.write("\n")

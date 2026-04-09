@@ -1,0 +1,73 @@
+global {
+
+    flores_src=(
+        LanguagePair:
+            en_de=eng_Latn
+            en_zh=eng_Latn
+    )
+
+    flores_tgt=(
+        LanguagePair:
+            en_de=deu_Latn
+            en_zh=cmn_Hans
+    )
+
+    wmt_src=(
+        LanguagePair:
+            en_de=en
+            en_zh=en
+    )
+
+    wmt_tgt=(
+        LanguagePair:
+            en_de=de
+            en_zh=zh
+    )
+
+    src_name=(
+        LanguagePair:
+            en_de=English
+            en_zh=English
+    )
+    tgt_name=(
+        LanguagePair:
+            en_de=German
+            en_zh=Chinese
+    )
+
+    seamless_src=(
+        LanguagePair:
+            en_de=eng
+            en_zh=eng
+    )
+
+    seamless_tgt=(
+        LanguagePair:
+            en_de=deu
+            en_zh=cmn
+    )
+
+    covost_src=(
+        LanguagePair:
+            en_de=en
+            en_zh=en
+    )
+
+    covost_tgt=(
+        LanguagePair:
+            en_de=de
+            en_zh=zh-CN
+    )
+
+    language_pair=(
+        LanguagePair:
+            en_de
+            en_zh
+    )
+
+    sonar_tgt=(
+        LanguagePair:
+            en_de=deu_Latn
+            en_zh=zho_Hans
+    )
+}

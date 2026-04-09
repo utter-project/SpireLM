@@ -1,4 +1,0 @@
-global {
-    ducttape_output=/path/to/save/outputs
-    repo=/path/to/SpireLM
-}

@@ -1,6 +1,8 @@
 experiments/tape-configs/uservars*.tconf
 !experiments/tape-configs/uservars_TEMPLATE.tconf
 
+dataset-configs/disk/
+
 build/
 dist/
 

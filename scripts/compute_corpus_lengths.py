@@ -5,12 +5,8 @@ import numpy as np
 
 from datasets import disable_caching
 
-from spire.data import load_hf_audio_dataset
-
-
-def compute_commonvoice_time(example):
-    example["seconds"] = example["audio"]["array"].shape[0] / example["audio"]["sampling_rate"]
-    return example
+from spire.cli import dataset_parser
+from spire.data import load_audio_dataset
 
 
 def compute_time_from_array(example):
@@ -35,37 +31,18 @@ def compute_mls_eng_time(example):
 
 def main(args):
 
-    remove_audio = True
-    if "spgispeech" in args.path:
-        compute_time_func = compute_spgi_time
-    elif "gigaspeech" in args.path:
-        compute_time_func = compute_gigaspeech_time
-    elif "mls_eng" in args.path:
-        compute_time_func = compute_mls_eng_time
-    else:
-        compute_time_func = compute_time_from_array
-        remove_audio = False
-
-    '''
-    if "common_voice" in args.path:
-        corpus_name = "commonvoice"
-    elif "spgispeech" in args.path:
-        corpus_name = "spgi"
-    else:
-        corpus_name = "gigaspeech"
-
-    compute_time_funcs = {
-        "commonvoice": compute_commonvoice_time,
-        "spgi": compute_spgi_time,
-        "gigaspeech": compute_gigaspeech_time
+    length_funcs = {
+        "spgispeech": compute_spgi_time,
+        "gigaspeech": compute_gigaspeech_time,
+        "mls_eng": compute_mls_eng_time
     }
-    compute_time_func = compute_time_funcs[corpus_name]
-    '''
-
-    dataset = load_hf_audio_dataset(
-        args.path, path_extra=args.path_extra, split=args.split,
-        remove_audio=remove_audio
+    remove_audio = args.compute_length_func in length_funcs
+    compute_time_func = length_funcs.get(
+        args.compute_length_func,
+        compute_time_from_array
     )
+
+    dataset, _ = load_audio_dataset(args.config, remove_audio=remove_audio)
     if remove_audio:
         disable_caching()
         dataset = dataset.map(compute_time_func)
@@ -80,10 +57,8 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--path")
-    parser.add_argument("--path-extra", nargs="?", const="")
-    parser.add_argument("--split", default="train")
+    parser = argparse.ArgumentParser(parents=[dataset_parser])
+    parser.add_argument("--compute-length-func", default=None)
     parser.add_argument("--out", default="times.npy")
     args = parser.parse_args()
     main(args)

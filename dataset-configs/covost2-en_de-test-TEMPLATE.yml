@@ -1,0 +1,4 @@
+path: facebook/covost2
+config: en_de
+split: test
+data_dir: /path/to/commonvoice-v4/
