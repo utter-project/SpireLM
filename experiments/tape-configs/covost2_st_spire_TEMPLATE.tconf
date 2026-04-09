@@ -23,7 +23,12 @@ global {
     max_tokens=(MaxTokens: 256 128 512)
 
     external_ref_path=""
-    dataset_config="dataset-configs/covost2-en_de-test.yml"
+    # LanguagePair branch points here must match languages_spire_covost2.tconf
+    dataset_config=(
+        LanguagePair:
+            en_de="dataset-configs/covost2-en_de-test.yml"
+            en_zh="dataset-configs/covost2-en_zh-test.yml"
+    )
     transcript_field="sentence"
     translation_field="translation"
 }
