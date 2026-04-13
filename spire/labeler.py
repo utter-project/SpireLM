@@ -1,7 +1,42 @@
 import torch
 import torch.nn as nn
 import joblib
-from transformers import AutoModel, HubertModel, Wav2Vec2BertModel
+from transformers import AutoModel, AutoConfig, HubertModel, Wav2Vec2BertModel, WhisperModel
+from transformers.models.whisper.modeling_whisper import WhisperEncoder
+
+
+def adapt_hubert(model, layer=None, remove_final_layer_norm=True):
+    if remove_final_layer_norm:
+        model.encoder.layer_norm = nn.Identity()  # kludge to avoid applying final layer norm
+    if layer is not None:
+        model.encoder.layers = model.encoder.layers[:layer]
+    return model
+
+
+def adapt_w2v_bert(model, layer=None, remove_final_layer_norm=True):
+    if layer is not None:
+        model.encoder.layers = model.encoder.layers[:layer]
+    if remove_final_layer_norm:
+        model.encoder.layers[-1].final_layer_norm = nn.Identity()
+    return model
+
+
+def adapt_whisper(model, layer=None, remove_final_layer_norm=True):
+    model = model.encoder
+    if layer is not None:
+        model.layers = model.layers[:layer]
+    if remove_final_layer_norm:
+        model.layers[-1].final_layer_norm = nn.Identity()
+    return model
+
+
+# keys are with AutoConfig.from_pretrained(path).model_type
+MODEL_ADAPTERS = {
+    "hubert": adapt_hubert,
+    "wav2vec2-bert": adapt_w2v_bert,
+    "whisper": adapt_whisper,
+    "wav2vec2": adapt_hubert,
+}
 
 
 def _pool_out_length(input_length, pooling_size, stride=None):
@@ -27,18 +62,7 @@ class Featurizer(nn.Module):
     def __init__(self, ckpt_path, layer=22, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
         super().__init__()
 
-        self.model = AutoModel.from_pretrained(ckpt_path, torch_dtype=dtype)
-
-        if isinstance(self.model, HubertModel):
-            self.model.encoder.layer_norm = nn.Identity()  # kludge to avoid applying final layer norm
-            self.model.encoder.layers = self.model.encoder.layers[:layer]
-        elif isinstance(self.model, Wav2Vec2BertModel):
-            # I *think* this is the way to go for getting SSL features from a
-            # w2v model
-            self.model.encoder.layers = self.model.encoder.layers[:layer]
-            self.model.encoder.layers[-1].final_layer_norm = nn.Identity()
-        else:
-            raise ValueError("Unknown SSL architecture")
+        self.model = self._init_model(ckpt_path, layer, dtype)
 
         if pooling_width > 1:
             # do I want ceil_mode?
@@ -49,8 +73,23 @@ class Featurizer(nn.Module):
         else:
             self.pooling = None
 
+    def _init_model(self, ckpt_path, layer, dtype):
+        model_type = AutoConfig.from_pretrained(ckpt_path).model_type
+        adapter = MODEL_ADAPTERS.get(model_type, None)
+        if adapter is None:
+            raise ValueError(f"Unknown model type {model_type}")
+        model = AutoModel.from_pretrained(ckpt_path, torch_dtype=dtype)
+        model = adapter(model, layer=layer, remove_final_layer_norm=True)
+        return model
+
     def _get_feature_vector_attention_mask(self, length, attention_mask):
         return self.model._get_feature_vector_attention_mask(length, attention_mask)
+
+    def _get_feature_vector_attention_mask(self, length, attention_mask):
+        if isinstance(self.model, WhisperEncoder):
+            return attention_mask[:, :length].bool()
+        else:
+            return self.model._get_feature_vector_attention_mask(length, attention_mask)
 
     def forward(self, batch, attention_mask=None, flatten=False, return_pad_percent=False):
         """
