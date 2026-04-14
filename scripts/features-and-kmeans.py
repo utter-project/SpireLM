@@ -80,7 +80,8 @@ def main(args):
         n_examples=args.n_examples,
         resample_to=args.resample_to,
         token_batching=args.token_batching,
-        example_lengths=args.example_lengths
+        example_lengths=args.example_lengths,
+        torch_random=torch_random
     )
 
     n_hours = 0.
