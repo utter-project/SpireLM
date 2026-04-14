@@ -26,6 +26,7 @@ def main(args):
         args.ssl_model,
         args.kmeans_model,
         layer=args.layer,
+        no_final_layer_norm=args.no_final_layer_norm,
         dtype=dtype,
         pooling_width=args.pooling_width,
         pooling_type=args.pooling_type

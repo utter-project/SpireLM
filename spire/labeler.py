@@ -59,10 +59,10 @@ def _lengths_to_mask(lengths, max_length, dtype, device):
 
 class Featurizer(nn.Module):
 
-    def __init__(self, ckpt_path, layer=22, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
+    def __init__(self, ckpt_path, layer=None, dtype=torch.float32, pooling_width=1, pooling_type="mean", keep_final_layer_norm=False):
         super().__init__()
 
-        self.model = self._init_model(ckpt_path, layer, dtype)
+        self.model = self._init_model(ckpt_path, layer, dtype, keep_final_layer_norm)
 
         if pooling_width > 1:
             # do I want ceil_mode?
@@ -73,13 +73,13 @@ class Featurizer(nn.Module):
         else:
             self.pooling = None
 
-    def _init_model(self, ckpt_path, layer, dtype):
+    def _init_model(self, ckpt_path, layer, dtype, keep_final_layer_norm):
         model_type = AutoConfig.from_pretrained(ckpt_path).model_type
         adapter = MODEL_ADAPTERS.get(model_type, None)
         if adapter is None:
             raise ValueError(f"Unknown model type {model_type}")
         model = AutoModel.from_pretrained(ckpt_path, torch_dtype=dtype)
-        model = adapter(model, layer=layer, remove_final_layer_norm=True)
+        model = adapter(model, layer=layer, remove_final_layer_norm=not keep_final_layer_norm)
         return model
 
     def _get_feature_vector_attention_mask(self, length, attention_mask):
@@ -178,9 +178,9 @@ class KMeans(nn.Module):
 
 class Labeler(nn.Module):
 
-    def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
+    def __init__(self, ckpt_path, km_path, layer=None, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
         """
-        The layer default of 22 is a strong value for HuBERT-large. It may be
+        22 is a strong default value for HuBERT-large. It may be
         inappropriate for other models.
         """
         super().__init__()
