@@ -1,7 +1,42 @@
 import torch
 import torch.nn as nn
 import joblib
-from transformers import AutoModel, HubertModel, Wav2Vec2BertModel
+from transformers import AutoModel, AutoConfig
+from transformers.models.whisper.modeling_whisper import WhisperEncoder
+
+
+def adapt_hubert(model, layer=None, remove_final_layer_norm=True):
+    if remove_final_layer_norm:
+        model.encoder.layer_norm = nn.Identity()  # kludge to avoid applying final layer norm
+    if layer is not None:
+        model.encoder.layers = model.encoder.layers[:layer]
+    return model
+
+
+def adapt_w2v_bert(model, layer=None, remove_final_layer_norm=True):
+    if layer is not None:
+        model.encoder.layers = model.encoder.layers[:layer]
+    if remove_final_layer_norm:
+        model.encoder.layers[-1].final_layer_norm = nn.Identity()
+    return model
+
+
+def adapt_whisper(model, layer=None, remove_final_layer_norm=True):
+    model = model.encoder
+    if layer is not None:
+        model.layers = model.layers[:layer]
+    if remove_final_layer_norm:
+        model.layers[-1].final_layer_norm = nn.Identity()
+    return model
+
+
+# keys are with AutoConfig.from_pretrained(path).model_type
+MODEL_ADAPTERS = {
+    "hubert": adapt_hubert,
+    "wav2vec2-bert": adapt_w2v_bert,
+    "whisper": adapt_whisper,
+    "wav2vec2": adapt_hubert,
+}
 
 
 def _pool_out_length(input_length, pooling_size, stride=None):
@@ -24,21 +59,10 @@ def _lengths_to_mask(lengths, max_length, dtype, device):
 
 class Featurizer(nn.Module):
 
-    def __init__(self, ckpt_path, layer=22, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
+    def __init__(self, ckpt_path, layer=None, dtype=torch.float32, pooling_width=1, pooling_type="mean", keep_final_layer_norm=False):
         super().__init__()
 
-        self.model = AutoModel.from_pretrained(ckpt_path, torch_dtype=dtype)
-
-        if isinstance(self.model, HubertModel):
-            self.model.encoder.layer_norm = nn.Identity()  # kludge to avoid applying final layer norm
-            self.model.encoder.layers = self.model.encoder.layers[:layer]
-        elif isinstance(self.model, Wav2Vec2BertModel):
-            # I *think* this is the way to go for getting SSL features from a
-            # w2v model
-            self.model.encoder.layers = self.model.encoder.layers[:layer]
-            self.model.encoder.layers[-1].final_layer_norm = nn.Identity()
-        else:
-            raise ValueError("Unknown SSL architecture")
+        self.model = self._init_model(ckpt_path, layer, dtype, keep_final_layer_norm)
 
         if pooling_width > 1:
             # do I want ceil_mode?
@@ -49,8 +73,29 @@ class Featurizer(nn.Module):
         else:
             self.pooling = None
 
+    def _init_model(self, ckpt_path, layer, dtype, keep_final_layer_norm):
+        model_type = AutoConfig.from_pretrained(ckpt_path).model_type
+        adapter = MODEL_ADAPTERS.get(model_type, None)
+        if adapter is None:
+            raise ValueError(f"Unknown model type {model_type}")
+        model = AutoModel.from_pretrained(ckpt_path, torch_dtype=dtype)
+        model = adapter(model, layer=layer, remove_final_layer_norm=not keep_final_layer_norm)
+        return model
+
     def _get_feature_vector_attention_mask(self, length, attention_mask):
-        return self.model._get_feature_vector_attention_mask(length, attention_mask)
+        """
+        Compute the attention mask for the output of the featurizer. For models like HuBERT, this
+        means calling their internal _get_feature_vector_attention_mask. For Whisper, no such function
+        exists, so it needs to be downsampled here. The input attention_mask will be of shape batch x 3000.
+        The output will be downsampled to batch x 1500.
+        """
+        if isinstance(self.model, WhisperEncoder):
+            # downsample by a factor of 2, taking the max of each pair of adjacent positions
+            attention_mask = attention_mask.unsqueeze(1)  # batch x 1 x seq_len
+            attention_mask = torch.nn.functional.max_pool1d(attention_mask.float(), kernel_size=2, stride=2)
+            return attention_mask.squeeze(1).bool()  # batch x seq_len // 2
+        else:
+            return self.model._get_feature_vector_attention_mask(length, attention_mask)
 
     def forward(self, batch, attention_mask=None, flatten=False, return_pad_percent=False):
         """
@@ -58,11 +103,10 @@ class Featurizer(nn.Module):
         If flatten == False, return batch x seq_len x D
         If flatten == True, return N x D, where N <= batch*seq_len == the number of non-pad positions
         """
-        # is there a good reason not to have this assertion?
         assert attention_mask is not None
 
         feats = self.model(batch, attention_mask=attention_mask).last_hidden_state
-        pre_pool_max_len = feats.shape[1]
+        pre_pool_max_len = feats.shape[1]  # always 1500 for whisper models
 
         if self.pooling is not None:
             feats = self.pooling(feats.transpose(1, 2)).transpose(1, 2)
@@ -139,9 +183,9 @@ class KMeans(nn.Module):
 
 class Labeler(nn.Module):
 
-    def __init__(self, ckpt_path, km_path, layer=22, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
+    def __init__(self, ckpt_path, km_path, layer=None, dtype=torch.float32, pooling_width=1, pooling_type="mean", keep_final_layer_norm=False):
         """
-        The layer default of 22 is a strong value for HuBERT-large. It may be
+        22 is a strong default value for HuBERT-large. It may be
         inappropriate for other models.
         """
         super().__init__()
@@ -151,7 +195,8 @@ class Labeler(nn.Module):
             layer=layer,
             dtype=dtype,
             pooling_width=pooling_width,
-            pooling_type=pooling_type
+            pooling_type=pooling_type,
+            keep_final_layer_norm=keep_final_layer_norm
         )
         self.kmeans = KMeans(km_path, dtype=dtype)
 

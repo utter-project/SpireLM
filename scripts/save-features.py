@@ -27,6 +27,7 @@ def main(args):
     featurizer = Featurizer(
         args.ssl_model,
         layer=args.layer,
+        keep_final_layer_norm=args.keep_final_layer_norm,
         dtype=dtype,
         pooling_width=args.pooling_width,
         pooling_type=args.pooling_type

@@ -6,6 +6,7 @@ import soundfile as sf
 import numpy as np
 import torch
 from torch.utils.data import Dataset, Sampler, SequentialSampler, RandomSampler, BatchSampler, DataLoader
+from transformers import WhisperFeatureExtractor
 from datasets import load_from_disk, load_dataset, Audio
 
 
@@ -73,9 +74,10 @@ def collate_fn(inputs, feature_extractor, hf_dataset=True):
         audios,
         sampling_rate=feature_extractor.sampling_rate,
         return_tensors="pt",
-        padding=True,
+        padding="max_length" if isinstance(feature_extractor, WhisperFeatureExtractor) else "longest",
         return_attention_mask=True
     )
+
     batch["indices"] = [inp["idx"] for inp in inputs]
     if "seconds" not in inputs[0]:
         batch["seconds"] = [audio.shape[0] / feature_extractor.sampling_rate for audio in audios]

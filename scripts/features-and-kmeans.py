@@ -59,6 +59,7 @@ def main(args):
     featurizer = Featurizer(
         args.ssl_model,
         layer=args.layer,
+        keep_final_layer_norm=args.keep_final_layer_norm,
         dtype=dtype,
         pooling_width=args.pooling_width,
         pooling_type=args.pooling_type
@@ -79,7 +80,8 @@ def main(args):
         n_examples=args.n_examples,
         resample_to=args.resample_to,
         token_batching=args.token_batching,
-        example_lengths=args.example_lengths
+        example_lengths=args.example_lengths,
+        torch_random=torch_random
     )
 
     n_hours = 0.

@@ -12,10 +12,10 @@ CLI arguments for speech encoders, including for managing which device they
 are on
 """
 ssl_parser = argparse.ArgumentParser(add_help=False)
-# currently --ckpt_path in label-audio.py
 ssl_parser.add_argument("--ssl-model", default="facebook/hubert-large-ll60k",
                         help="also try others like facebook/w2v-bert-2.0")
-ssl_parser.add_argument("--layer", type=int, default=22)
+ssl_parser.add_argument("--layer", type=int, default=None)
+ssl_parser.add_argument("--keep-final-layer-norm", action="store_true")
 ssl_parser.add_argument("--dtype", default="fp32", choices=["fp32", "bf16"])
 ssl_parser.add_argument("--compile", action="store_true")  # I guess?
 ssl_parser.add_argument("--pooling-width", type=int, default=1, help="1 recovers no pooling")
@@ -45,6 +45,6 @@ dataset_parser.add_argument("--example-lengths", default=None)
 CLI arguments for DSUs
 """
 dsu_parser = argparse.ArgumentParser(add_help=False)  # as in for the kmeans model stuff
-dsu_parser.add_argument("--kmeans-model", default="/mnt/scratch-artemis/kshitij/clustering/kmeans_model/3datsets_combined_kmeans_5000")
+dsu_parser.add_argument("--kmeans-model", required=True)
 dsu_parser.add_argument("--as-indices", action="store_true")
 dsu_parser.add_argument("--no-dedup", action="store_true")
