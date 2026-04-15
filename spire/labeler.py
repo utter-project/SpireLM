@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import joblib
-from transformers import AutoModel, AutoConfig, HubertModel, Wav2Vec2BertModel, WhisperModel
+from transformers import AutoModel, AutoConfig
 from transformers.models.whisper.modeling_whisper import WhisperEncoder
 
 
@@ -83,11 +83,17 @@ class Featurizer(nn.Module):
         return model
 
     def _get_feature_vector_attention_mask(self, length, attention_mask):
-        return self.model._get_feature_vector_attention_mask(length, attention_mask)
-
-    def _get_feature_vector_attention_mask(self, length, attention_mask):
+        """
+        Compute the attention mask for the output of the featurizer. For models like HuBERT, this
+        means calling their internal _get_feature_vector_attention_mask. For Whisper, no such function
+        exists, so it needs to be downsampled here. The input attention_mask will be of shape batch x 3000.
+        The output will be downsampled to batch x 1500.
+        """
         if isinstance(self.model, WhisperEncoder):
-            return attention_mask[:, :length].bool()
+            # downsample by a factor of 2, taking the max of each pair of adjacent positions
+            attention_mask = attention_mask.unsqueeze(1)  # batch x 1 x seq_len
+            attention_mask = torch.nn.functional.max_pool1d(attention_mask.float(), kernel_size=2, stride=2)
+            return attention_mask.squeeze(1).bool()  # batch x seq_len // 2
         else:
             return self.model._get_feature_vector_attention_mask(length, attention_mask)
 
@@ -97,11 +103,10 @@ class Featurizer(nn.Module):
         If flatten == False, return batch x seq_len x D
         If flatten == True, return N x D, where N <= batch*seq_len == the number of non-pad positions
         """
-        # is there a good reason not to have this assertion?
         assert attention_mask is not None
 
         feats = self.model(batch, attention_mask=attention_mask).last_hidden_state
-        pre_pool_max_len = feats.shape[1]
+        pre_pool_max_len = feats.shape[1]  # always 1500 for whisper models
 
         if self.pooling is not None:
             feats = self.pooling(feats.transpose(1, 2)).transpose(1, 2)
