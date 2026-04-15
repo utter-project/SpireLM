@@ -178,7 +178,7 @@ class KMeans(nn.Module):
 
 class Labeler(nn.Module):
 
-    def __init__(self, ckpt_path, km_path, layer=None, dtype=torch.float32, pooling_width=1, pooling_type="mean"):
+    def __init__(self, ckpt_path, km_path, layer=None, dtype=torch.float32, pooling_width=1, pooling_type="mean", keep_final_layer_norm=False):
         """
         22 is a strong default value for HuBERT-large. It may be
         inappropriate for other models.
@@ -190,7 +190,8 @@ class Labeler(nn.Module):
             layer=layer,
             dtype=dtype,
             pooling_width=pooling_width,
-            pooling_type=pooling_type
+            pooling_type=pooling_type,
+            keep_final_layer_norm=keep_final_layer_norm
         )
         self.kmeans = KMeans(km_path, dtype=dtype)
 
