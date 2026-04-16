@@ -144,7 +144,7 @@ def main(args):
 
     disable_caching()
     assert len(args.config) == 1
-    dataset, _ = load_audio_dataset(args.config, remove_audio=True)
+    dataset, _ = load_audio_dataset(args.config[0], remove_audio=True)
 
     # iterate_over_files allows this to handle multiple shards. It's easier
     # if it's all already combined but I guess this is a nice generalization.
