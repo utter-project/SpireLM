@@ -54,8 +54,6 @@ def main(args):
     torch_random = torch.Generator(device="cpu")  # DataLoader always uses CPU
     torch_random.manual_seed(args.torch_seed)
 
-    feature_extractor = AutoFeatureExtractor.from_pretrained(args.ssl_model)
-
     featurizer = Featurizer(
         args.ssl_model,
         layer=args.layer,
@@ -70,6 +68,7 @@ def main(args):
     if args.compile:
         featurizer = torch.compile(featurizer)
 
+    feature_extractor = AutoFeatureExtractor.from_pretrained(args.ssl_model)
     loader, _ = build_dataloader(
         config=args.config,
         dataset_weights=args.dataset_weights,
@@ -101,10 +100,6 @@ def main(args):
                 mask = batch.attention_mask
                 if device == "cuda":
                     mask = mask.cuda()
-
-                # reminder: featurizer is essentially the forward of a HubertModel,
-                # but with some layers cut off (is there a more elegant way to
-                # do this inside HF?)
 
                 features = featurizer(
                     batch=inp,
@@ -141,6 +136,8 @@ def main(args):
                                 print(f"Stopping: centroid delta below threshold ({delta} < {args.centroid_delta})")
                                 stop_training = True
                         old_centers = kmeans.cluster_centers_.copy()
+                        if args.save_intermediate:
+                            joblib.dump(kmeans, args.out_path + "." + str(n_updates))
 
                         sys.stdout.flush()
                         if stop_training:
@@ -159,8 +156,8 @@ if __name__ == "__main__":
     parser.add_argument("--kmeans-batch-size", type=int, default=20000)
     parser.add_argument("--feature-dir")
     parser.add_argument("--hours-per-shard", type=float, default=1.)
-
     parser.add_argument("--out-path", default="kmeans.joblib")
+    parser.add_argument("--save-intermediate", action="store_true")
     parser.add_argument("--n-clusters", type=int, default=5000)
     parser.add_argument("--init", default="k-means++", choices=["k-means++", "random"])
     parser.add_argument("--max_iter", default=100, type=int)
@@ -172,8 +169,5 @@ if __name__ == "__main__":
     # everything below: minibatch-specific arguments
     parser.add_argument("--validation-steps", type=int, default=100)
     parser.add_argument("--centroid-delta", type=float, default=1e-4)
-    parser.add_argument("--validation-dir", nargs="*", help="Location of shards for validation (should be kept disjoint from training)")
-    parser.add_argument("--inertia-tol", type=float, default=1e-3)
-    parser.add_argument("--inertia-patience", type=int, default=5)
     args = parser.parse_args()
     main(args)
