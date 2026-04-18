@@ -7,9 +7,6 @@ Pros of doing it this way:
     - makes it practical to train on far more data
 Cons of doing it this way:
     - features need to be recomputed
-
-Note that all of the pros and cons are essentially different ways of framing the
-same fact.
 """
 
 import argparse
