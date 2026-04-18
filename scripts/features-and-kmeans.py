@@ -15,6 +15,7 @@ import sys
 from tqdm import tqdm
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
+from sklearn.metrics import davies_bouldin_score, calinski_harabasz_score
 import torch
 from transformers import AutoFeatureExtractor
 import joblib
@@ -22,6 +23,57 @@ import joblib
 from spire.labeler import Featurizer
 from spire.data import build_dataloader
 from spire.cli import ssl_parser, dataset_parser, randomness_parser
+
+
+class EarlyStopper:
+    """Patience-based early stopper for clustering validation metrics."""
+
+    def __init__(self, patience, is_lower_better):
+        self.patience = patience
+        self.is_lower_better = is_lower_better
+        self.best = None
+        self.bad_steps = 0
+
+    def step(self, value):
+        """Returns True when training should stop."""
+        if self.best is None:
+            self.best = value
+            return False
+        improved = value < self.best if self.is_lower_better else value > self.best
+        if improved:
+            self.best = value
+            self.bad_steps = 0
+        else:
+            self.bad_steps += 1
+        return self.bad_steps >= self.patience
+
+
+def extract_validation_features(featurizer, loader, input_field_name, dtype, device):
+    """Extract and concatenate all features from a validation loader into a single array."""
+    all_features = []
+    with torch.no_grad():
+        for batch in loader:
+            inp = batch[input_field_name].to(dtype=dtype, device=device)
+            mask = batch.attention_mask
+            if device == "cuda":
+                mask = mask.cuda()
+            features = featurizer(
+                batch=inp,
+                attention_mask=mask,
+                flatten=True,
+                return_pad_percent=True
+            )[0].cpu().float().numpy()
+            all_features.append(features)
+    return np.concatenate(all_features, axis=0)
+
+
+def compute_val_metrics(kmeans, val_features):
+    """Compute inertia, Davies-Bouldin, and Calinski-Harabasz on a held-out feature set."""
+    inertia = -kmeans.score(val_features)
+    labels = kmeans.predict(val_features)
+    db = davies_bouldin_score(val_features, labels)
+    ch = calinski_harabasz_score(val_features, labels)
+    return {"inertia": inertia, "davies-bouldin": db, "calinski-harabasz": ch}
 
 
 def main(args):
@@ -77,6 +129,36 @@ def main(args):
         torch_random=torch_random
     )
 
+    val_features = None
+    if args.val_config:
+        if args.val_dataset_weights is not None:
+            assert len(args.val_config) == len(args.val_dataset_weights)
+        print("Extracting validation features...")
+        val_loader, _ = build_dataloader(
+            config=args.val_config,
+            dataset_weights=args.val_dataset_weights,
+            feature_extractor=feature_extractor,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            n_examples=args.val_n_examples,
+            resample_to=args.resample_to,
+        )
+        input_field_name = feature_extractor.model_input_names[0]
+        val_features = extract_validation_features(featurizer, val_loader, input_field_name, dtype, device)
+        print(f"Validation set: {val_features.shape[0]} frames, {val_features.shape[1]} dims")
+
+    _METRIC_LOWER_IS_BETTER = {
+        "inertia": True,
+        "davies-bouldin": True,
+        "calinski-harabasz": False,
+    }
+    early_stopper = None
+    if args.early_stopping_metric in _METRIC_LOWER_IS_BETTER:
+        early_stopper = EarlyStopper(
+            patience=args.early_stopping_patience,
+            is_lower_better=_METRIC_LOWER_IS_BETTER[args.early_stopping_metric],
+        )
+
     n_hours = 0.
     old_centers = None
     feature_buffer = []
@@ -125,10 +207,27 @@ def main(args):
                         if old_centers is not None:
                             delta = np.linalg.norm(kmeans.cluster_centers_ - old_centers) / np.linalg.norm(old_centers)
                             print(f"Centroid delta at step {n_updates}: {delta:.6f}")
-                            if delta < args.centroid_delta:
+                            if args.early_stopping_metric == "centroid-delta" and delta < args.centroid_delta:
                                 print(f"Stopping: centroid delta below threshold ({delta} < {args.centroid_delta})")
                                 stop_training = True
                         old_centers = kmeans.cluster_centers_.copy()
+
+                        if val_features is not None:
+                            metrics = compute_val_metrics(kmeans, val_features)
+                            print(
+                                f"Validation at step {n_updates}: "
+                                f"inertia={metrics['inertia']:.4f}  "
+                                f"davies-bouldin={metrics['davies-bouldin']:.4f}  "
+                                f"calinski-harabasz={metrics['calinski-harabasz']:.4f}"
+                            )
+                            if early_stopper is not None and early_stopper.step(metrics[args.early_stopping_metric]):
+                                print(
+                                    f"Stopping: no improvement in {args.early_stopping_metric} "
+                                    f"for {args.early_stopping_patience} consecutive validation steps "
+                                    f"(best={early_stopper.best:.6f})"
+                                )
+                                stop_training = True
+
                         if args.save_intermediate:
                             joblib.dump(kmeans, args.out_path + "." + str(n_updates))
 
@@ -158,5 +257,17 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", type=int, default=1)
     parser.add_argument("--validation-steps", type=int, default=100)
     parser.add_argument("--centroid-delta", type=float, default=1e-4)
+    parser.add_argument("--val-config", nargs="*", default=None,
+                        help="Dataset config(s) for the held-out validation set (same format as --config)")
+    parser.add_argument("--val-dataset-weights", nargs="*", type=float, default=None,
+                        help="Per-config sampling weights for the validation set (must match length of --val-config)")
+    parser.add_argument("--val-n-examples", type=int, default=0,
+                        help="Max number of examples to use from the validation set (0 = all)")
+    parser.add_argument("--early-stopping-metric",
+                        choices=["centroid-delta", "inertia", "davies-bouldin", "calinski-harabasz"],
+                        default="centroid-delta",
+                        help="Metric used to trigger early stopping")
+    parser.add_argument("--early-stopping-patience", type=int, default=3,
+                        help="For dataset-based metrics: consecutive validation steps without improvement before stopping")
     args = parser.parse_args()
     main(args)
