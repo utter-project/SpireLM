@@ -8,12 +8,12 @@ task LabelAudio
     :: repo=@
 {
     full_dataset_config=$dataset_config
-    if [ ! -f $full_dataset_config ] ; then
+    if [[ ! -f $full_dataset_config ]] ; then
         full_dataset_config="${repo}/${full_dataset_config}"
     fi
 
     km_model_path=$km_model
-    if [ ! -f $km_model_path ] ; then
+    if [[ ! -f $km_model_path ]] ; then
         km_model_path="${repo}/${km_model_path}"
     fi
 
@@ -35,7 +35,7 @@ task BuildInstructions
     :: repo=@
 {
     full_template=$template
-    if [ ! -f $template ] ; then
+    if [[ ! -f $template ]] ; then
         full_template="${repo}/${full_template}"
     fi
 
@@ -73,7 +73,7 @@ task DumpASRText
     :: repo=@
 {
     full_dataset_config=$dataset_config
-    if [ ! -f $template ] ; then
+    if [[ ! -f $full_dataset_config ]] ; then
         full_dataset_config="${repo}/${full_dataset_config}"
     fi
     python $repo/scripts/extract_asr_text.py \
