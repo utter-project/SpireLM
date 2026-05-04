@@ -45,6 +45,6 @@ dataset_parser.add_argument("--example-lengths", default=None)
 CLI arguments for DSUs
 """
 dsu_parser = argparse.ArgumentParser(add_help=False)  # as in for the kmeans model stuff
-dsu_parser.add_argument("--kmeans-model", required=True)
+dsu_parser.add_argument("--kmeans-model")
 dsu_parser.add_argument("--as-indices", action="store_true")
 dsu_parser.add_argument("--no-dedup", action="store_true")

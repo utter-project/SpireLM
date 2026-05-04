@@ -11,11 +11,15 @@ tokenizer, even if it is subsequently converted to a fast tokenizer)
 """
 
 import argparse
+from functools import partial
 
 import torch
+import torch.nn as nn
 from torch.distributions.multivariate_normal import MultivariateNormal
-# from transformers import LlamaForCausalLM, LlamaTokenizer
 from transformers import AutoModelForCausalLM, AutoTokenizer
+import joblib
+
+from spire.cli import dsu_parser, randomness_parser
 
 
 def embedding_normal(emb):
@@ -27,44 +31,104 @@ def embedding_normal(emb):
     return dist
 
 
+def mean_init(emb_matrix, orig_size, n_new):
+    """Initialize new embeddings by sampling from a Gaussian fitted to the original embeddings."""
+    dist = embedding_normal(emb_matrix[:orig_size])
+    emb_matrix[orig_size:] = dist.sample((n_new,))
+    return emb_matrix
+
+
+def random_orthogonal_init(emb_matrix, orig_size, n_new, centroids, eps=1e-5, match_original_stats=True):
+    """Initialize new embeddings by applying a random orthogonal linear transformation to the centroids."""
+    if centroids is None:
+        raise ValueError("Centroids must be provided for random orthogonal initialization.")
+
+    K, d_c = centroids.shape
+    linear = nn.Linear(d_c, emb_matrix.shape[1], bias=False)
+
+    # orthogonal init
+    nn.init.orthogonal_(linear.weight)
+
+    E = linear(centroids)  # (K, d_model)
+
+    if match_original_stats:
+        orig_emb = emb_matrix[:orig_size]
+        target_mean = orig_emb.mean(dim=0, keepdim=True)
+        target_std = orig_emb.std(dim=0, keepdim=True)
+        E = (E - E.mean(dim=0, keepdim=True)) / (E.std(dim=0, keepdim=True) + eps)
+        E = E * target_std + target_mean
+    else:
+        # normalize norms
+        norms = E.norm(dim=1, keepdim=True) + eps
+        E = E / norms
+    print("this is K", K)
+    print("this is n_new", n_new)
+    print("E shape", E.shape)
+    print("emb_matrix shape", emb_matrix.shape)
+    print("the slice size is", emb_matrix[orig_size: orig_size + K].shape)
+
+    supposed_emb_matrix = emb_matrix[orig_size: orig_size + K]
+    print("supposed_emb_matrix shape", supposed_emb_matrix.shape)
+    emb_matrix[orig_size: orig_size + K] = E
+
+    return emb_matrix
+
+
 def main(args):
-    # the new tokenizers I have are just sentencepiece models. How do I turn
-    # them into LlamaTokenizers?
-    torch.manual_seed(args.seed)
+    torch.manual_seed(args.seed)  # mismatch from elsewhere in repo, where args.torch_seed is used
 
     model = AutoModelForCausalLM.from_pretrained(args.model_path)
-    orig_vocab_size = model.config.vocab_size
-    print("Original vocab size", orig_vocab_size)  # 32000
+    original_tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    orig_vocab_size = len(original_tokenizer)
+    print("Original vocab size (excluding unused padding types)", orig_vocab_size)
 
-    # differences precipitated by the change away from instantiating from the spm model:
-    # ...not sure, actually.
-    # But there's some kind of bug with the dimensions not lining up in
-    # model.model.embed_tokens.weight[orig_vocab_size:] = new_input_emb
+    # original_vocab_size is the index where the new types begin
+    # or is it? For qwen, the new specials seem to go first
+    orig_vocab_size += 5  # kludge for now
 
-    # new_tokenizer = LlamaTokenizer(args.new_tokenizer)
     new_tokenizer = AutoTokenizer.from_pretrained(args.new_tokenizer)
-    new_vocab_size = len(new_tokenizer)  # now unused; the pad types mess it up
+    new_vocab_size = len(new_tokenizer)
+    print("New vocab size", new_vocab_size)
     assert new_vocab_size > orig_vocab_size
 
+    num_new_types = new_vocab_size - orig_vocab_size
+
     # this handles both input and output embeddings
-    print("weight shape before resize", model.model.embed_tokens.weight.shape)  # 32000
+    print("weight shape before resize", model.model.embed_tokens.weight.shape)
     model.resize_token_embeddings(new_vocab_size, pad_to_multiple_of=args.pad_multiple)
-    print("weight shape after resize", model.model.embed_tokens.weight.shape)  # 37056
+    print("weight shape after resize", model.model.embed_tokens.weight.shape)
 
-    num_new_types = model.config.vocab_size - orig_vocab_size
+    if args.kmeans_model is not None:
+        centroids = torch.from_numpy(
+            joblib.load(args.kmeans_model).cluster_centers_
+        )
+        print(centroids.shape)
+        print(orig_vocab_size, new_vocab_size, num_new_types)
+        assert centroids.shape[0] == num_new_types
+    else:
+        centroids = None
+    rand_orth_init = partial(
+        random_orthogonal_init,
+        centroids=centroids,
+        match_original_stats=args.match_original_stats
+    )
+    init_strategies = {
+        "mean": mean_init,
+        "random_orthogonal": rand_orth_init,
+    }
 
-    if args.init_strategy == "mean":
-        # set new embeddings
+    if args.init_strategy in init_strategies:
+        init_fn = init_strategies[args.init_strategy]
+
         with torch.no_grad():
-            input_emb = model.model.embed_tokens.weight
-            input_normal = embedding_normal(input_emb[:orig_vocab_size])
-            new_input_emb = input_normal.sample((num_new_types,))
-            model.model.embed_tokens.weight[orig_vocab_size:] = new_input_emb
-
-            output_emb = model.lm_head.weight
-            output_normal = embedding_normal(output_emb[:orig_vocab_size])
-            new_output_emb = output_normal.sample((num_new_types,))
-            model.lm_head.weight[orig_vocab_size:] = new_output_emb
+            model.model.embed_tokens.weight = init_fn(
+                model.model.embed_tokens.weight, orig_vocab_size, num_new_types
+            )
+            model.lm_head.weight = init_fn(
+                model.lm_head.weight, orig_vocab_size, num_new_types
+            )
+    # else nothing to do because resize_token_embeddings already does
+    # the default initialization
 
     # save the model
     model.save_pretrained(args.out_dir)
@@ -72,12 +136,13 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(parents=[dsu_parser, randomness_parser])
     parser.add_argument("--model-path")
     parser.add_argument("--out-dir")
     parser.add_argument("--new-tokenizer", help="path to spm model")
-    parser.add_argument("--init-strategy", default="default", choices=["default", "mean"])
+    parser.add_argument("--init-strategy", default="default",
+                        choices=["default", "mean", "random_orthogonal"])
+    parser.add_argument("--no-match-original-stats", dest="match_original_stats", action="store_false")
     parser.add_argument("--pad-multiple", type=int, default=64)
-    parser.add_argument("--seed", type=int, default=42)
-    opt = parser.parse_args()
-    main(opt)
+    args = parser.parse_args()
+    main(args)

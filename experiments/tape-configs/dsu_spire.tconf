@@ -17,4 +17,6 @@ global {
             spire=22
     )
     hubert_dtype=(HubertDtype: fp32 bf16)
+
+    keep_final_layer_norm=false
 }

@@ -4,6 +4,7 @@ task LabelAudio
     :: hubert_layer=@
     :: hubert_dtype=@
     :: km_model=@
+    :: keep_final_layer_norm=@
     :: dataset_config=@
     :: repo=@
 {
@@ -17,14 +18,23 @@ task LabelAudio
         km_model_path="${repo}/${km_model_path}"
     fi
 
+    extra_args=""
+    if [[ $hubert_layer != "" ]] ; then
+        extra_args="--layer ${hubert_layer} ${extra_args}"
+    fi
+
+    if [[ $keep_final_layer_norm == "true" ]] ; then
+        extra_args="--keep-final-layer-norm ${extra_args}"
+    fi
+
     python $repo/scripts/label-audio.py \
         --config $full_dataset_config \
         --out-path $dsus \
         --ssl-model $hubert_model \
-        --layer $hubert_layer \
         --kmeans-model $km_model_path \
         --batch-size 4 \
-        --dtype $hubert_dtype
+        --dtype $hubert_dtype \
+        $extra_args
 }
 
 task BuildInstructions
